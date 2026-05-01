@@ -16,6 +16,8 @@ from omr.services.pipeline import process_image
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 
+from core.models import Student
+
 
 class ExamViewSet(viewsets.ModelViewSet):
     queryset = Exam.active.all()
@@ -68,8 +70,23 @@ class OMRViewSet(viewsets.ViewSet):
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
+        student = None
+
+        try:
+            student_number_int = int(result["numero_aluno"])
+        except (TypeError, ValueError):
+            student_number_int = None
+
+        if exam.class_group and student_number_int is not None:
+            student = Student.active.filter(
+                class_group=exam.class_group,
+                number=student_number_int,
+                is_active=True,
+            ).first()
+
         scan_result = ScanResult.objects.create(
             exam=exam,
+            student=student,
             student_number=result["numero_aluno"],
             answers=result["respostas"],
             score=result["nota"],
