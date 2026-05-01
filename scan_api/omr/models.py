@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from core.models import BaseModel
+from core.models import BaseModel, ClassGroup, Student
 
 
 class Exam(BaseModel):
@@ -21,9 +21,39 @@ class Exam(BaseModel):
         null=True,
     )
 
+    class_group = models.ForeignKey(
+        ClassGroup,
+        on_delete=models.PROTECT,
+        related_name="exams",
+        verbose_name=_("Turma"),
+        null=True,
+        blank=True,
+    )
+
+    questions_count = models.PositiveIntegerField(
+        _("Quantidade de questões"),
+        default=8,
+        help_text=_("Quantidade total de questões da prova."),
+    )
+
+    options_count = models.PositiveIntegerField(
+        _("Quantidade de alternativas"),
+        default=5,
+        help_text=_("Quantidade de alternativas por questão. Exemplo: 4 para A-D, 5 para A-E."),
+    )
+
     answer_key = models.JSONField(
         _("Gabarito"),
-        help_text=_("Lista de respostas corretas. Exemplo: ['A', 'B', 'C']."),
+        blank=True,
+        null=True,
+        help_text=_("Lista de respostas corretas. Exemplo: ['A', 'B', 'C', 'D']."),
+    )
+
+    template_file = models.FileField(
+        _("Modelo de gabarito"),
+        upload_to="exam_templates/",
+        blank=True,
+        null=True,
     )
 
     is_active = models.BooleanField(
@@ -33,6 +63,10 @@ class Exam(BaseModel):
 
     def __str__(self):
         return self.title
+
+    @property
+    def options_labels(self):
+        return [chr(65 + i) for i in range(self.options_count)]
 
 
 class ScanResult(BaseModel):
@@ -46,6 +80,15 @@ class ScanResult(BaseModel):
         on_delete=models.CASCADE,
         related_name="scan_results",
         verbose_name=_("Prova"),
+    )
+
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.PROTECT,
+        related_name="scan_results",
+        verbose_name=_("Aluno"),
+        blank=True,
+        null=True,
     )
 
     student_number = models.CharField(

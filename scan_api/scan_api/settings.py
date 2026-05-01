@@ -23,6 +23,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 
 LOCAL_APPS = [
+    'core',
     'omr',
 ]
 
