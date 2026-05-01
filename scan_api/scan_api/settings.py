@@ -64,6 +64,13 @@ SIMPLE_JWT = {
 }
 
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ProvScan API",
+    "DESCRIPTION": "API para leitura automática de gabaritos.",
+    "VERSION": "1.0.0",
+}
+
+
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
 
 

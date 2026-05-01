@@ -302,14 +302,14 @@ def salvar_debug(image, thresh, bubbles):
     cv2.imwrite("debug_resultado.jpg", debug_img)
     cv2.imwrite("debug_threshold.jpg", thresh)
 
-    cv2.imshow("Bubbles Detectadas", debug_img)
-    cv2.imshow("Threshold", thresh)
+    # cv2.imshow("Bubbles Detectadas", debug_img)
+    # cv2.imshow("Threshold", thresh)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
 
-def process_image(path):
+def process_image(path, gabarito=None):
     raw_image = cv2.imread(path)
 
     if raw_image is None:
@@ -344,7 +344,8 @@ def process_image(path):
     print("Respostas:", respostas)
 
     # Gabarito correto informado por você
-    gabarito = ["A", "A", "C", "B", "E", "D", "D", "A"]
+    if gabarito is None:
+        gabarito = ["A", "A", "C", "B", "E", "D", "D", "A"]
 
     nota = calcular_nota(respostas, gabarito)
 
