@@ -13,6 +13,7 @@ from omr.api.v1.serializers import (
 )
 from omr.models import Exam, ScanResult
 from omr.services.pipeline import process_image
+from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 
 
@@ -28,6 +29,7 @@ class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
 
 class OMRViewSet(viewsets.ViewSet):
     serializer_class = ScanUploadSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
         request=ScanUploadSerializer,

@@ -6,9 +6,9 @@ __pycache__/
 *.pyc
 
 # Django project database and media
-probar_api/db.sqlite3
-probar_api/db.sqlite3-journal
-probar_api/media/
+scan_api/db.sqlite3
+scan_api/db.sqlite3-journal
+scan_api/media/
 
 # Environments / Secrets
 .env
@@ -19,8 +19,8 @@ ENV/
 env/
 env.bak/
 venv.bak/
-probar_api/.env
-probar_api/probar_api/.env
+scan_api/.env
+scan_api/scan_api/.env
 
 # Build / coverage / eggs
 dist/
