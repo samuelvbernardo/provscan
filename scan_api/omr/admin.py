@@ -9,9 +9,31 @@ from core.models import Student
 from omr.models import Exam, ScanResult
 from omr.services.pipeline import process_image
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+
+from omr.services.template_generator import generate_exam_template
+
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        should_generate = (
+            not obj.template_file
+            or "questions_count" in form.changed_data
+            or "options_count" in form.changed_data
+            or "title" in form.changed_data
+            or "class_group" in form.changed_data
+        )
+
+        if should_generate:
+            relative_path = generate_exam_template(obj)
+            obj.template_file = relative_path
+            obj.save(update_fields=["template_file"])
+
     list_display = (
         "id",
         "title",
@@ -39,6 +61,7 @@ class ExamAdmin(admin.ModelAdmin):
         "updated_at",
         "is_deleted",
         "deleted_at",
+        "template_file",
     )
 
     fieldsets = (
@@ -147,6 +170,8 @@ class ScanResultAdmin(admin.ModelAdmin):
                 result = process_image(
                     path=temp_path,
                     gabarito=obj.exam.answer_key,
+                    questions_count=obj.exam.questions_count,
+                    options_count=obj.exam.options_count,
                 )
             finally:
                 if os.path.exists(temp_path):
@@ -157,9 +182,17 @@ class ScanResultAdmin(admin.ModelAdmin):
             obj.score = result["nota"]
             obj.total_questions = len(obj.exam.answer_key)
 
-            obj.student = Student.active.filter(
+            obj.student = None
+
+            try:
+                student_number_int = int(obj.student_number)
+            except (TypeError, ValueError):
+                student_number_int = None
+
+            if obj.exam.class_group and student_number_int is not None:
+                obj.student = Student.active.filter(
                 class_group=obj.exam.class_group,
-                number=int(obj.student_number),
+                number=student_number_int,
                 is_active=True,
             ).first()
 

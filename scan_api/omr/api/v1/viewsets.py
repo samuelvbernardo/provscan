@@ -5,7 +5,9 @@ from django.core.files.base import ContentFile
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
+from core.models import Student
 from omr.api.v1.serializers import (
     ExamSerializer,
     ScanResultSerializer,
@@ -13,25 +15,38 @@ from omr.api.v1.serializers import (
 )
 from omr.models import Exam, ScanResult
 from omr.services.pipeline import process_image
-from rest_framework.parsers import MultiPartParser, FormParser
-from drf_spectacular.utils import extend_schema
-
-from core.models import Student
+from omr.services.template_generator import generate_exam_template
 
 
 class ExamViewSet(viewsets.ModelViewSet):
     queryset = Exam.active.all()
     serializer_class = ExamSerializer
 
+    def perform_create(self, serializer):
+        exam = serializer.save()
+
+        relative_path = generate_exam_template(exam)
+        exam.template_file = relative_path
+        exam.save(update_fields=["template_file"])
+
+    def perform_update(self, serializer):
+        exam = serializer.save()
+
+        relative_path = generate_exam_template(exam)
+        exam.template_file = relative_path
+        exam.save(update_fields=["template_file"])
+
 
 class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = ScanResult.active.select_related("exam").all()
+    queryset = ScanResult.active.select_related(
+        "exam",
+        "student",
+    ).all()
     serializer_class = ScanResultSerializer
 
 
 class OMRViewSet(viewsets.ViewSet):
     serializer_class = ScanUploadSerializer
-    parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
         request=ScanUploadSerializer,
@@ -65,6 +80,8 @@ class OMRViewSet(viewsets.ViewSet):
             result = process_image(
                 path=temp_path,
                 gabarito=exam.answer_key,
+                questions_count=exam.questions_count,
+                options_count=exam.options_count,
             )
         finally:
             if os.path.exists(temp_path):

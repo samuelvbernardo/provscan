@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from math import ceil
 
 from .preprocess import preprocess_image_from_array
 from .detect import find_bubbles
@@ -8,13 +9,24 @@ from .detect import find_bubbles
 IMAGE_WIDTH = 600
 IMAGE_HEIGHT = 800
 
+PAGE_WIDTH_MM = 210
+PAGE_HEIGHT_MM = 297
+
 LETRAS = ["A", "B", "C", "D", "E"]
+
+
+def mm_to_px_x(mm_value):
+    return mm_value * IMAGE_WIDTH / PAGE_WIDTH_MM
+
+
+def mm_to_px_y(mm_value):
+    return mm_value * IMAGE_HEIGHT / PAGE_HEIGHT_MM
 
 
 def score_bolha(image, thresh, x_centro, y_centro, raio=4):
     """
     Lê apenas o centro da bolha.
-    Isso evita contar a borda da bolha vazia.
+    Evita contar a borda da bolha vazia.
     """
 
     x1 = max(int(x_centro - raio), 0)
@@ -44,73 +56,10 @@ def score_bolha(image, thresh, x_centro, y_centro, raio=4):
     return max(score_thresh, score_cor)
 
 
-def clusterizar_valores(valores, tolerancia=12):
-    """
-    Agrupa valores próximos e retorna os centros dos grupos.
-    Exemplo: vários X parecidos viram uma coluna.
-    """
-
-    if not valores:
-        return []
-
-    valores = sorted(valores)
-    grupos = []
-
-    for valor in valores:
-        if not grupos:
-            grupos.append([valor])
-            continue
-
-        media_grupo = sum(grupos[-1]) / len(grupos[-1])
-
-        if abs(valor - media_grupo) <= tolerancia:
-            grupos[-1].append(valor)
-        else:
-            grupos.append([valor])
-
-    centros = [sum(grupo) / len(grupo) for grupo in grupos]
-
-    return centros
-
-
-def inferir_linhas_regulares(ys_detectados, quantidade, tolerancia_gap=4):
-    """
-    A partir das linhas detectadas, tenta inferir uma grade regular.
-
-    Importante:
-    Não tenta voltar uma linha para cima.
-    Usa a primeira linha detectada como início real da tabela.
-    """
-
-    if not ys_detectados:
-        return []
-
-    ys = sorted(ys_detectados)
-
-    if len(ys) >= 2:
-        gaps = [ys[i + 1] - ys[i] for i in range(len(ys) - 1)]
-        gaps_validos = [g for g in gaps if g > 10]
-
-        if gaps_validos:
-            gap = float(np.median(gaps_validos))
-        else:
-            gap = 22.0
-    else:
-        gap = 22.0
-
-    # Antes o código voltava uma linha para cima.
-    # Isso estava deslocando tudo.
-    inicio = ys[0]
-
-    linhas = [inicio + i * gap for i in range(quantidade)]
-
-    return linhas
-
-
 def escolher_marcacao(scores, limite_minimo=0.35, diferenca_minima=0.12):
     """
-    Escolhe o índice mais provável.
-    Se estiver duvidoso, retorna None.
+    Escolhe a alternativa/dígito marcado.
+    Se estiver vazio ou duvidoso, retorna None.
     """
 
     if not scores:
@@ -128,50 +77,33 @@ def escolher_marcacao(scores, limite_minimo=0.35, diferenca_minima=0.12):
     return int(np.argmax(scores))
 
 
-def ler_numero_aluno(image, thresh, bubbles):
+def ler_numero_aluno(image, thresh):
     """
-    Lê número do aluno no novo modelo.
+    Lê o número do aluno usando a grade fixa do modelo gerado.
 
-    Estratégia:
-    - usa os contornos detectados para descobrir as 2 colunas;
-    - infere as 10 linhas da tabela;
-    - lê todas as posições esperadas.
+    No template_generator.py:
+    start_x_num = 25mm
+    digit_col_1_x = start_x_num + 18mm = 43mm
+    digit_col_2_x = start_x_num + 32mm = 57mm
+    start_y_num = 78mm
+    row_gap = 7mm
     """
 
-    bolhas_aluno = []
-
-    for (x, y, w, h) in bubbles:
-        if 70 < x < 190 and 130 < y < 410:
-            bolhas_aluno.append((x, y, w, h))
-
-    print(f"Bolhas aluno: {len(bolhas_aluno)}")
-
-    xs = []
-    ys = []
-
-    for (x, y, w, h) in bolhas_aluno:
-        xs.append(x + w / 2)
-        ys.append(y + h / 2)
-
-    colunas_x = clusterizar_valores(xs, tolerancia=18)
-    colunas_x = sorted(colunas_x)
-
-    if len(colunas_x) > 2:
-        # pega as duas colunas mais à esquerda dentro da região
-        colunas_x = colunas_x[:2]
-
-    linhas_y = clusterizar_valores(ys, tolerancia=10)
-    linhas_y = inferir_linhas_regulares(linhas_y, quantidade=10)
-
-    print("Colunas aluno:", colunas_x)
-    print("Linhas aluno:", linhas_y)
+    colunas_x_mm = [43, 57]
+    start_y_mm = 78
+    row_gap_mm = 7
 
     numero = ""
 
-    for idx_coluna, x_centro in enumerate(colunas_x, start=1):
+    for idx_coluna, x_mm in enumerate(colunas_x_mm, start=1):
+        x_centro = mm_to_px_x(x_mm)
+
         scores = []
 
-        for y_centro in linhas_y:
+        for digit in range(10):
+            y_mm = start_y_mm + digit * row_gap_mm
+            y_centro = mm_to_px_y(y_mm)
+
             score = score_bolha(
                 image=image,
                 thresh=thresh,
@@ -198,49 +130,48 @@ def ler_numero_aluno(image, thresh, bubbles):
     return numero
 
 
-def processar_respostas(image, thresh, bubbles):
+def processar_respostas(image, thresh, questions_count, options_count):
     """
-    Lê as respostas no novo modelo.
+    Lê as respostas usando a grade fixa do modelo gerado.
 
-    Estratégia:
-    - usa bolhas detectadas para descobrir a grade;
-    - infere 8 linhas e 5 colunas;
-    - lê todas as 40 posições esperadas.
+    No template_generator.py:
+    start_x_questions = 75mm
+    start_y_questions = 78mm
+    column_width = 48mm
+    question_row_gap = 7mm
+    option_gap = 8mm
+    x da bolha = col_x + 15mm + opção * 8mm
     """
-
-    bolhas_questoes = []
-
-    for (x, y, w, h) in bubbles:
-        if 270 < x < 520 and 130 < y < 410:
-            bolhas_questoes.append((x, y, w, h))
-
-    print(f"Bolhas questões: {len(bolhas_questoes)}")
-
-    xs = []
-    ys = []
-
-    for (x, y, w, h) in bolhas_questoes:
-        xs.append(x + w / 2)
-        ys.append(y + h / 2)
-
-    colunas_x = clusterizar_valores(xs, tolerancia=18)
-    colunas_x = sorted(colunas_x)
-
-    if len(colunas_x) > 5:
-        colunas_x = colunas_x[:5]
-
-    linhas_y = clusterizar_valores(ys, tolerancia=10)
-    linhas_y = inferir_linhas_regulares(linhas_y, quantidade=8)
-
-    print("Colunas questões:", colunas_x)
-    print("Linhas questões:", linhas_y)
 
     respostas = []
 
-    for idx_linha, y_centro in enumerate(linhas_y, start=1):
+    question_columns = 2
+    questions_per_column = ceil(questions_count / question_columns)
+
+    start_x_questions_mm = 75
+    start_y_questions_mm = 78
+
+    column_width_mm = 48
+    question_row_gap_mm = 7
+    option_gap_mm = 8
+
+    for question_index in range(questions_count):
+        question_number = question_index + 1
+
+        bloco = question_index // questions_per_column
+        linha = question_index % questions_per_column
+
+        col_x_base_mm = start_x_questions_mm + bloco * column_width_mm
+        y_mm = start_y_questions_mm + linha * question_row_gap_mm
+
+        y_centro = mm_to_px_y(y_mm)
+
         scores = []
 
-        for x_centro in colunas_x:
+        for option_index in range(options_count):
+            x_mm = col_x_base_mm + 15 + option_index * option_gap_mm
+            x_centro = mm_to_px_x(x_mm)
+
             score = score_bolha(
                 image=image,
                 thresh=thresh,
@@ -251,7 +182,7 @@ def processar_respostas(image, thresh, bubbles):
 
             scores.append(score)
 
-        print(f"Scores questão {idx_linha}:", scores)
+        print(f"Scores questão {question_number}:", scores)
 
         marcada = escolher_marcacao(
             scores,
@@ -270,6 +201,9 @@ def processar_respostas(image, thresh, bubbles):
 def calcular_nota(respostas, gabarito):
     nota = 0
 
+    if not gabarito:
+        return nota
+
     for i in range(min(len(respostas), len(gabarito))):
         if respostas[i] == gabarito[i]:
             nota += 1
@@ -277,9 +211,10 @@ def calcular_nota(respostas, gabarito):
     return nota
 
 
-def salvar_debug(image, thresh, bubbles):
+def salvar_debug(image, thresh, bubbles, questions_count, options_count):
     debug_img = image.copy()
 
+    # Desenha bolhas detectadas por contorno
     for i, (x, y, w, h) in enumerate(bubbles):
         cv2.rectangle(
             debug_img,
@@ -294,22 +229,59 @@ def salvar_debug(image, thresh, bubbles):
             str(i),
             (x, y - 5),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.4,
+            0.35,
             (0, 0, 255),
             1,
         )
 
+    # Desenha pontos do número do aluno
+    colunas_x_mm = [43, 57]
+    start_y_mm = 78
+    row_gap_mm = 7
+
+    for x_mm in colunas_x_mm:
+        for digit in range(10):
+            x = int(mm_to_px_x(x_mm))
+            y = int(mm_to_px_y(start_y_mm + digit * row_gap_mm))
+
+            cv2.circle(debug_img, (x, y), 4, (255, 0, 0), 2)
+
+    # Desenha pontos das questões
+    question_columns = 2
+    questions_per_column = ceil(questions_count / question_columns)
+
+    start_x_questions_mm = 75
+    start_y_questions_mm = 78
+
+    column_width_mm = 48
+    question_row_gap_mm = 7
+    option_gap_mm = 8
+
+    for question_index in range(questions_count):
+        bloco = question_index // questions_per_column
+        linha = question_index % questions_per_column
+
+        col_x_base_mm = start_x_questions_mm + bloco * column_width_mm
+        y_mm = start_y_questions_mm + linha * question_row_gap_mm
+
+        y = int(mm_to_px_y(y_mm))
+
+        for option_index in range(options_count):
+            x_mm = col_x_base_mm + 15 + option_index * option_gap_mm
+            x = int(mm_to_px_x(x_mm))
+
+            cv2.circle(debug_img, (x, y), 4, (0, 0, 255), 2)
+
     cv2.imwrite("debug_resultado.jpg", debug_img)
     cv2.imwrite("debug_threshold.jpg", thresh)
 
-    # cv2.imshow("Bubbles Detectadas", debug_img)
-    # cv2.imshow("Threshold", thresh)
 
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-
-def process_image(path, gabarito=None):
+def process_image(
+    path,
+    gabarito=None,
+    questions_count=8,
+    options_count=5,
+):
     raw_image = cv2.imread(path)
 
     if raw_image is None:
@@ -337,21 +309,32 @@ def process_image(path, gabarito=None):
 
     print(f"Após filtro de borda: {len(bubbles)} bolhas")
 
-    numero_aluno = ler_numero_aluno(image, thresh, bubbles)
+    numero_aluno = ler_numero_aluno(image, thresh)
     print("Número do aluno:", numero_aluno)
 
-    respostas = processar_respostas(image, thresh, bubbles)
+    respostas = processar_respostas(
+        image=image,
+        thresh=thresh,
+        questions_count=questions_count,
+        options_count=options_count,
+    )
+
     print("Respostas:", respostas)
 
-    # Gabarito correto informado por você
     if gabarito is None:
-        gabarito = ["A", "A", "C", "B", "E", "D", "D", "A"]
+        gabarito = []
 
     nota = calcular_nota(respostas, gabarito)
 
     print(f"Nota: {nota}/{len(gabarito)}")
 
-    salvar_debug(image, thresh, bubbles)
+    salvar_debug(
+        image=image,
+        thresh=thresh,
+        bubbles=bubbles,
+        questions_count=questions_count,
+        options_count=options_count,
+    )
 
     return {
         "numero_aluno": numero_aluno,

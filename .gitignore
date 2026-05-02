@@ -21,6 +21,7 @@ env.bak/
 venv.bak/
 scan_api/.env
 scan_api/scan_api/.env
+scan_api/staticfiles
 
 # Build / coverage / eggs
 dist/
