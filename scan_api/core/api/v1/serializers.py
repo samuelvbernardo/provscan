@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from core.models import ClassGroup, Student
 
+from drf_spectacular.utils import extend_schema_field
+
 
 class ClassGroupSerializer(serializers.ModelSerializer):
     students_count = serializers.SerializerMethodField()
@@ -24,6 +26,7 @@ class ClassGroupSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    @extend_schema_field(int)
     def get_students_count(self, obj):
         return obj.students.filter(is_deleted=False).count()
 

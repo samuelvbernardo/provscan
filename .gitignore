@@ -22,6 +22,8 @@ venv.bak/
 scan_api/.env
 scan_api/scan_api/.env
 scan_api/staticfiles
+scan_api/debug_*.jpg
+scan_api/gunicorn.ctl
 
 # Build / coverage / eggs
 dist/

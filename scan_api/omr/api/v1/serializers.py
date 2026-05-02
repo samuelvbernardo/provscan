@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from omr.models import Exam, ScanResult
 
+from drf_spectacular.utils import extend_schema_field
+
 
 class ExamSerializer(serializers.ModelSerializer):
     class_group_name = serializers.CharField(
@@ -142,9 +144,11 @@ class ScanResultSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    @extend_schema_field(bool)
     def get_student_identified(self, obj):
         return obj.student is not None
 
+    @extend_schema_field(list[str])
     def get_warnings(self, obj):
         warnings = []
 

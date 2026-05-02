@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: .
+    container_name: provscan_backend
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    ports:
+      - "8000:8000"
+
+volumes:
+  media_data:
+  static_data:
