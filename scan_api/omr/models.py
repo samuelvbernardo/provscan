@@ -26,26 +26,22 @@ class Exam(BaseModel):
         on_delete=models.PROTECT,
         related_name="exams",
         verbose_name=_("Turma"),
-        null=True,
-        blank=True,
     )
 
     questions_count = models.PositiveIntegerField(
         _("Quantidade de questões"),
         default=8,
-        help_text=_("Quantidade total de questões da prova."),
+        help_text=_("Quantidade total de questões da prova. Mínimo 8 e máximo 30."),
     )
 
     options_count = models.PositiveIntegerField(
         _("Quantidade de alternativas"),
-        default=5,
-        help_text=_("Quantidade de alternativas por questão. Exemplo: 4 para A-D, 5 para A-E."),
+        default=4,
+        help_text=_("Quantidade de alternativas por questão. Mínimo 4 e máximo 5."),
     )
 
     answer_key = models.JSONField(
         _("Gabarito"),
-        blank=True,
-        null=True,
         help_text=_("Lista de respostas corretas. Exemplo: ['A', 'B', 'C', 'D']."),
     )
 
@@ -67,7 +63,6 @@ class Exam(BaseModel):
     @property
     def options_labels(self):
         return [chr(65 + i) for i in range(self.options_count)]
-
 
 class ScanResult(BaseModel):
     class Meta(BaseModel.Meta):

@@ -36,9 +36,9 @@ class ExamSerializer(serializers.ModelSerializer):
         ]
 
     def validate_questions_count(self, value):
-        if value < 1 or value > 30:
+        if value < 8 or value > 30:
             raise serializers.ValidationError(
-                "A quantidade de questões deve estar entre 1 e 30."
+                "A quantidade de questões deve estar entre 8 e 30."
             )
 
         return value
