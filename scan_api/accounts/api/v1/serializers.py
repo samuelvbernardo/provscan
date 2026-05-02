@@ -2,8 +2,25 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from accounts.validators import validate_email_domain_exists
+
 
 User = get_user_model()
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "date_joined",
+        ]
+        read_only_fields = fields
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -24,8 +41,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "email",
-            "first_name",
-            "last_name",
             "password",
             "password_confirm",
         ]
@@ -33,6 +48,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         value = value.lower().strip()
+
+        validate_email_domain_exists(value)
 
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
@@ -63,18 +80,3 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
 
         return user
-    
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            "id",
-            "email",
-            "first_name",
-            "last_name",
-            "is_active",
-            "is_staff",
-            "date_joined",
-        ]
-        read_only_fields = fields
