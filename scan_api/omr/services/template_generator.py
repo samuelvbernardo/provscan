@@ -1,10 +1,28 @@
 import os
-from math import ceil
 
 from django.conf import settings
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+
+from .layout import (
+    QUESTION_ROW_GAP_MM,
+    QUESTIONS_COLUMNS,
+    QUESTIONS_START_X_MM,
+    QUESTIONS_START_Y_MM,
+    READ_AREA_BOTTOM_MM,
+    READ_AREA_LEFT_MM,
+    READ_AREA_RIGHT_MM,
+    READ_AREA_TOP_MM,
+    STUDENT_NUMBER_COLUMNS_X_MM,
+    STUDENT_NUMBER_ROW_GAP_MM,
+    STUDENT_NUMBER_START_X_MM,
+    STUDENT_NUMBER_START_Y_MM,
+    question_column_width_mm,
+    question_letter_x_mm,
+    question_option_x_mm,
+    questions_per_column,
+)
 
 
 def generate_exam_template(exam):
@@ -28,16 +46,30 @@ def generate_exam_template(exam):
     page_width, page_height = A4
 
     # -----------------------------
-    # MARCADORES EXTERNOS
+    # MARCADORES DA ÁREA DE LEITURA
     # -----------------------------
-    marker_size = 8 * mm
-    marker_margin = 10 * mm
+    marker_size = 7 * mm
+
+    # Área útil que precisa aparecer na foto.
+    # Os marcadores ficam próximos ao bloco do gabarito,
+    # e não nos cantos da folha inteira.
+    read_area_left = READ_AREA_LEFT_MM * mm
+    read_area_right = READ_AREA_RIGHT_MM * mm
+    read_area_top = page_height - READ_AREA_TOP_MM * mm
+    read_area_bottom = page_height - READ_AREA_BOTTOM_MM * mm
 
     markers = [
-        (marker_margin, page_height - marker_margin - marker_size),
-        (page_width - marker_margin - marker_size, page_height - marker_margin - marker_size),
-        (marker_margin, marker_margin),
-        (page_width - marker_margin - marker_size, marker_margin),
+        # superior esquerdo
+        (read_area_left, read_area_top - marker_size),
+
+        # superior direito
+        (read_area_right - marker_size, read_area_top - marker_size),
+
+        # inferior esquerdo
+        (read_area_left, read_area_bottom),
+
+        # inferior direito
+        (read_area_right - marker_size, read_area_bottom),
     ]
 
     for x, y in markers:
@@ -78,14 +110,14 @@ def generate_exam_template(exam):
     c.setFont("Helvetica", 8)
     c.drawString(25 * mm, page_height - 66 * mm, "Marque um número em cada coluna.")
 
-    start_x_num = 25 * mm
-    start_y_num = page_height - 78 * mm
+    start_x_num = STUDENT_NUMBER_START_X_MM * mm
+    start_y_num = page_height - STUDENT_NUMBER_START_Y_MM * mm
 
-    row_gap = 7 * mm
+    row_gap = STUDENT_NUMBER_ROW_GAP_MM * mm
     circle_radius = 2.5 * mm
 
-    digit_col_1_x = start_x_num + 18 * mm
-    digit_col_2_x = start_x_num + 32 * mm
+    digit_col_1_x = STUDENT_NUMBER_COLUMNS_X_MM[0] * mm
+    digit_col_2_x = STUDENT_NUMBER_COLUMNS_X_MM[1] * mm
 
     c.setFont("Helvetica-Bold", 8)
     c.drawString(digit_col_1_x - 2 * mm, start_y_num + 7 * mm, "1º")
@@ -106,17 +138,16 @@ def generate_exam_template(exam):
     options = [chr(65 + i) for i in range(exam.options_count)]
 
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(75 * mm, page_height - 60 * mm, "QUESTÕES")
+    c.drawString(QUESTIONS_START_X_MM * mm, page_height - 60 * mm, "QUESTÕES")
 
-    total_columns = 2
-    questions_per_column = ceil(exam.questions_count / total_columns)
+    total_columns = QUESTIONS_COLUMNS
+    per_column = questions_per_column(exam.questions_count)
 
-    start_x_questions = 75 * mm
-    start_y_questions = page_height - 78 * mm
+    start_x_questions = QUESTIONS_START_X_MM * mm
+    start_y_questions = page_height - QUESTIONS_START_Y_MM * mm
 
-    column_width = 48 * mm
-    question_row_gap = 7 * mm
-    option_gap = 8 * mm
+    column_width = question_column_width_mm(exam.options_count) * mm
+    question_row_gap = QUESTION_ROW_GAP_MM * mm
 
     for col in range(total_columns):
         col_x = start_x_questions + col * column_width
@@ -125,11 +156,11 @@ def generate_exam_template(exam):
         c.setFont("Helvetica-Bold", 8)
 
         for opt_idx, opt in enumerate(options):
-            x = col_x + 14 * mm + opt_idx * option_gap
+            x = question_letter_x_mm(col_x / mm, opt_idx) * mm
             c.drawString(x - 1.5 * mm, start_y_questions + 7 * mm, opt)
 
-        for row in range(questions_per_column):
-            question_number = col * questions_per_column + row + 1
+        for row in range(per_column):
+            question_number = col * per_column + row + 1
 
             if question_number > exam.questions_count:
                 break
@@ -140,7 +171,7 @@ def generate_exam_template(exam):
             c.drawString(col_x, y - 1 * mm, f"{question_number:02d}")
 
             for opt_idx in range(exam.options_count):
-                x = col_x + 15 * mm + opt_idx * option_gap
+                x = question_option_x_mm(col_x / mm, opt_idx) * mm
                 c.circle(x, y, circle_radius, stroke=1, fill=0)
 
     # -----------------------------
@@ -152,10 +183,9 @@ def generate_exam_template(exam):
 
     instructions = [
         "Instruções:",
-        "1. Preencha completamente a bolha escolhida.",
+        "1. Preencha completamente a opção escolhida.",
         "2. Marque apenas uma alternativa por questão.",
         "3. Não rasure os marcadores pretos dos cantos.",
-        "4. Use este cartão no modelo padronizado do sistema.",
     ]
 
     for idx, text in enumerate(instructions):

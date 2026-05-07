@@ -1,16 +1,21 @@
 import cv2
 import numpy as np
-from math import ceil
 
+from .layout import (
+    PAGE_HEIGHT_MM,
+    PAGE_WIDTH_MM,
+    STUDENT_NUMBER_COLUMNS_X_MM,
+    STUDENT_NUMBER_ROW_GAP_MM,
+    STUDENT_NUMBER_START_Y_MM,
+    question_option_x_mm,
+    question_position_mm,
+)
 from .preprocess import preprocess_image_from_array
 from .detect import find_bubbles
 
 
 IMAGE_WIDTH = 600
 IMAGE_HEIGHT = 800
-
-PAGE_WIDTH_MM = 210
-PAGE_HEIGHT_MM = 297
 
 LETRAS = ["A", "B", "C", "D", "E"]
 
@@ -89,9 +94,9 @@ def ler_numero_aluno(image, thresh):
     row_gap = 7mm
     """
 
-    colunas_x_mm = [43, 57]
-    start_y_mm = 78
-    row_gap_mm = 7
+    colunas_x_mm = STUDENT_NUMBER_COLUMNS_X_MM
+    start_y_mm = STUDENT_NUMBER_START_Y_MM
+    row_gap_mm = STUDENT_NUMBER_ROW_GAP_MM
 
     numero = ""
 
@@ -135,9 +140,9 @@ def processar_respostas(image, thresh, questions_count, options_count):
     Lê as respostas usando a grade fixa do modelo gerado.
 
     No template_generator.py:
-    start_x_questions = 75mm
+    start_x_questions = 68mm
     start_y_questions = 78mm
-    column_width = 48mm
+    column_width = 50mm para 4 alternativas e 60mm para 5 alternativas
     question_row_gap = 7mm
     option_gap = 8mm
     x da bolha = col_x + 15mm + opção * 8mm
@@ -145,31 +150,21 @@ def processar_respostas(image, thresh, questions_count, options_count):
 
     respostas = []
 
-    question_columns = 2
-    questions_per_column = ceil(questions_count / question_columns)
-
-    start_x_questions_mm = 75
-    start_y_questions_mm = 78
-
-    column_width_mm = 48
-    question_row_gap_mm = 7
-    option_gap_mm = 8
-
     for question_index in range(questions_count):
         question_number = question_index + 1
 
-        bloco = question_index // questions_per_column
-        linha = question_index % questions_per_column
-
-        col_x_base_mm = start_x_questions_mm + bloco * column_width_mm
-        y_mm = start_y_questions_mm + linha * question_row_gap_mm
+        col_x_base_mm, y_mm = question_position_mm(
+            question_index,
+            questions_count,
+            options_count,
+        )
 
         y_centro = mm_to_px_y(y_mm)
 
         scores = []
 
         for option_index in range(options_count):
-            x_mm = col_x_base_mm + 15 + option_index * option_gap_mm
+            x_mm = question_option_x_mm(col_x_base_mm, option_index)
             x_centro = mm_to_px_x(x_mm)
 
             score = score_bolha(
@@ -235,9 +230,9 @@ def salvar_debug(image, thresh, bubbles, questions_count, options_count):
         )
 
     # Desenha pontos do número do aluno
-    colunas_x_mm = [43, 57]
-    start_y_mm = 78
-    row_gap_mm = 7
+    colunas_x_mm = STUDENT_NUMBER_COLUMNS_X_MM
+    start_y_mm = STUDENT_NUMBER_START_Y_MM
+    row_gap_mm = STUDENT_NUMBER_ROW_GAP_MM
 
     for x_mm in colunas_x_mm:
         for digit in range(10):
@@ -247,27 +242,17 @@ def salvar_debug(image, thresh, bubbles, questions_count, options_count):
             cv2.circle(debug_img, (x, y), 4, (255, 0, 0), 2)
 
     # Desenha pontos das questões
-    question_columns = 2
-    questions_per_column = ceil(questions_count / question_columns)
-
-    start_x_questions_mm = 75
-    start_y_questions_mm = 78
-
-    column_width_mm = 48
-    question_row_gap_mm = 7
-    option_gap_mm = 8
-
     for question_index in range(questions_count):
-        bloco = question_index // questions_per_column
-        linha = question_index % questions_per_column
-
-        col_x_base_mm = start_x_questions_mm + bloco * column_width_mm
-        y_mm = start_y_questions_mm + linha * question_row_gap_mm
+        col_x_base_mm, y_mm = question_position_mm(
+            question_index,
+            questions_count,
+            options_count,
+        )
 
         y = int(mm_to_px_y(y_mm))
 
         for option_index in range(options_count):
-            x_mm = col_x_base_mm + 15 + option_index * option_gap_mm
+            x_mm = question_option_x_mm(col_x_base_mm, option_index)
             x = int(mm_to_px_x(x_mm))
 
             cv2.circle(debug_img, (x, y), 4, (0, 0, 255), 2)
