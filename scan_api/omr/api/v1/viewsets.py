@@ -83,6 +83,11 @@ class OMRViewSet(viewsets.ViewSet):
                 questions_count=exam.questions_count,
                 options_count=exam.options_count,
             )
+        except Exception:
+            return Response(
+                {"detail": "Não foi possível processar a imagem. Verifique se o cartão está bem iluminado, centralizado e sem dobras."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
