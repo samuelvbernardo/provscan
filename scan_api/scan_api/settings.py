@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import warnings
 import environ
 import dj_database_url
 
@@ -17,6 +18,15 @@ SECRET_KEY = env('SECRET_KEY')
 
 
 DEBUG = env('DEBUG')
+
+_db_url = env('DATABASE_URL', default='')
+if DEBUG and any(host in _db_url for host in ('supabase.com', 'supabase.co', 'amazonaws.com', 'render.com')):
+    warnings.warn(
+        "ATENÇÃO: DEBUG=True com uma URL de banco de dados de produção detectada. "
+        "Isso pode expor informações sensíveis via páginas de erro do Django.",
+        RuntimeWarning,
+        stacklevel=1,
+    )
 
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')

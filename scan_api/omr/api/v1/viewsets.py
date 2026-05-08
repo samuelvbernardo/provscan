@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from django.core.files.base import ContentFile
+from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from omr.api.v1.serializers import (
 )
 from omr.models import Exam, ScanResult
 from omr.services.pipeline import process_image
+from omr.services.report import generate_report_card
 from omr.services.template_generator import generate_exam_template
 
 
@@ -41,9 +43,36 @@ class ExamViewSet(viewsets.ModelViewSet):
 class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ScanResult.active.select_related(
         "exam",
+        "exam__class_group",
         "student",
     ).all()
     serializer_class = ScanResultSerializer
+
+    @extend_schema(
+        responses={(200, "application/pdf"): bytes},
+        description="Gera e retorna o boletim individual do resultado em PDF.",
+    )
+    @action(detail=True, methods=["get"], url_path="report")
+    def report(self, request, pk=None):
+        scan_result = self.get_object()
+        try:
+            pdf_bytes = generate_report_card(scan_result)
+        except Exception:
+            return Response(
+                {"detail": "Não foi possível gerar o boletim."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        student_label = (
+            scan_result.student.name.replace(" ", "_")
+            if scan_result.student
+            else f"aluno_{scan_result.student_number}"
+        )
+        filename = f"boletim_{student_label}_{scan_result.id}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 class ScanRateThrottle(UserRateThrottle):

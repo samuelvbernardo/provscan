@@ -156,3 +156,50 @@ class UserCreateAPITests(APITestCase):
     def test_list_users_requires_auth(self):
         res = self.client.get(self.URL)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class UserPermissionTests(APITestCase):
+    """Testa as regras de acesso do UserViewSet após a correção de privilege escalation."""
+
+    URL = "/api/v1/users/"
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="user@example.com", password="Test@1234")
+        self.other = User.objects.create_user(email="other@example.com", password="Test@1234")
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Test@1234")
+
+    def test_list_users_as_regular_user_returns_403(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_users_as_admin_returns_200(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_own_profile_returns_200(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(f"{self.URL}{self.user.id}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["email"], "user@example.com")
+
+    def test_retrieve_other_user_returns_403(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.get(f"{self.URL}{self.other.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_retrieve_any_user(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get(f"{self.URL}{self.user.id}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_delete_other_user_as_regular_returns_403(self):
+        self.client.force_authenticate(user=self.user)
+        res = self.client.delete(f"{self.URL}{self.other.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_user_as_admin_returns_204(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.delete(f"{self.URL}{self.other.id}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)

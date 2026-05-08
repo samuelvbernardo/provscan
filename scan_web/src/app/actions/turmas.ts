@@ -54,11 +54,11 @@ export async function createClassGroup(
 
 export async function deleteClassGroup(formData: FormData) {
   const id = formData.get('id') as string
-  try {
-    const res = await apiFetch(`/api/v1/class-groups/${id}/`, { method: 'DELETE' })
-    if (res.status === 401) await clearSessionAndRedirect()
-  } catch {
-    // silently fail — page will still revalidate
+  const res = await apiFetch(`/api/v1/class-groups/${id}/`, { method: 'DELETE' })
+  if (res.status === 401) await clearSessionAndRedirect()
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail ?? 'Não foi possível excluir a turma.')
   }
   revalidatePath('/turmas')
 }

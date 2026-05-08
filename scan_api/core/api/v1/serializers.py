@@ -1,8 +1,7 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from core.models import ClassGroup, Student
-
-from drf_spectacular.utils import extend_schema_field
 
 
 class ClassGroupSerializer(serializers.ModelSerializer):
@@ -28,6 +27,10 @@ class ClassGroupSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(int)
     def get_students_count(self, obj):
+        # Usa o valor anotado pelo queryset quando disponível (sem N+1).
+        # Faz a contagem direta apenas em create/update (objeto único, aceitável).
+        if hasattr(obj, "students_count"):
+            return obj.students_count
         return obj.students.filter(is_deleted=False).count()
 
 

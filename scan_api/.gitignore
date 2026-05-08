@@ -10,6 +10,11 @@ __pycache__/
 /db.sqlite3-journal
 /media/
 
+# Imagens de teste e debug do OMR
+omr/*.jpg
+omr/*.jpeg
+omr/*.png
+
 # Environments / Secrets
 .env
 *.env

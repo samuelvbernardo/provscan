@@ -135,6 +135,24 @@ class ClassGroupAPITests(APITestCase):
         res = self.client.get(f"{self.URL}99999/")
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_students_count_in_list_reflects_active_students(self):
+        cg = make_class_group(name="Turma Contagem")
+        Student.objects.create(class_group=cg, name="Ativo", number=1)
+        deleted = Student.objects.create(class_group=cg, name="Deletado", number=2)
+        deleted.delete()
+        res = self.client.get(self.URL)
+        item = next(r for r in res.data["results"] if r["name"] == "Turma Contagem")
+        self.assertEqual(item["students_count"], 1)
+
+    def test_students_count_is_zero_on_create(self):
+        res = self.client.post(
+            self.URL,
+            {"name": "Turma Zero", "school_year": "2024", "is_active": True},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["students_count"], 0)
+
 
 class StudentAPITests(APITestCase):
     URL = "/api/v1/students/"
