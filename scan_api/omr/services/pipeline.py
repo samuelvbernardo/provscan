@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from django.conf import settings
 
 from .layout import (
     PAGE_HEIGHT_MM,
@@ -119,7 +120,8 @@ def ler_numero_aluno(image, thresh):
 
             scores.append(score)
 
-        print(f"Scores aluno coluna {idx_coluna}:", scores)
+        if settings.DEBUG:
+            print(f"Scores aluno coluna {idx_coluna}:", scores)
 
         digito = escolher_marcacao(
             scores,
@@ -177,7 +179,8 @@ def processar_respostas(image, thresh, questions_count, options_count):
 
             scores.append(score)
 
-        print(f"Scores questão {question_number}:", scores)
+        if settings.DEBUG:
+            print(f"Scores questão {question_number}:", scores)
 
         marcada = escolher_marcacao(
             scores,
@@ -278,7 +281,8 @@ def process_image(
 
     bubbles = find_bubbles(thresh)
 
-    print(f"Encontrou {len(bubbles)} bolhas (antes do filtro)")
+    if settings.DEBUG:
+        print(f"Encontrou {len(bubbles)} bolhas (antes do filtro)")
 
     h_img, w_img = thresh.shape
 
@@ -292,10 +296,13 @@ def process_image(
 
     bubbles = filtered
 
-    print(f"Após filtro de borda: {len(bubbles)} bolhas")
+    if settings.DEBUG:
+        print(f"Após filtro de borda: {len(bubbles)} bolhas")
 
     numero_aluno = ler_numero_aluno(image, thresh)
-    print("Número do aluno:", numero_aluno)
+
+    if settings.DEBUG:
+        print("Número do aluno:", numero_aluno)
 
     respostas = processar_respostas(
         image=image,
@@ -304,22 +311,25 @@ def process_image(
         options_count=options_count,
     )
 
-    print("Respostas:", respostas)
+    if settings.DEBUG:
+        print("Respostas:", respostas)
 
     if gabarito is None:
         gabarito = []
 
     nota = calcular_nota(respostas, gabarito)
 
-    print(f"Nota: {nota}/{len(gabarito)}")
+    if settings.DEBUG:
+        print(f"Nota: {nota}/{len(gabarito)}")
 
-    salvar_debug(
-        image=image,
-        thresh=thresh,
-        bubbles=bubbles,
-        questions_count=questions_count,
-        options_count=options_count,
-    )
+    if settings.DEBUG:
+        salvar_debug(
+            image=image,
+            thresh=thresh,
+            bubbles=bubbles,
+            questions_count=questions_count,
+            options_count=options_count,
+        )
 
     return {
         "numero_aluno": numero_aluno,
