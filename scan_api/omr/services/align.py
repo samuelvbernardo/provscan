@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from django.conf import settings
 
 
 def distance(p1, p2):
