@@ -52,6 +52,37 @@ export async function createClassGroup(
   redirect('/turmas')
 }
 
+export async function updateClassGroup(
+  _state: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const id = formData.get('id') as string
+  const name = (formData.get('name') as string)?.trim()
+  const school_year = (formData.get('school_year') as string)?.trim()
+
+  if (!name) return { error: 'Nome da turma é obrigatório.' }
+
+  let res: Response
+  try {
+    res = await apiFetch(`/api/v1/class-groups/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, school_year: school_year || null }),
+    })
+  } catch {
+    return { error: 'Não foi possível conectar ao servidor.' }
+  }
+
+  if (res.status === 401) await clearSessionAndRedirect()
+
+  if (!res.ok) {
+    const data = await res.json()
+    return { error: extractError(data) }
+  }
+
+  revalidatePath('/turmas')
+  return { ok: true }
+}
+
 export async function deleteClassGroup(formData: FormData) {
   const id = formData.get('id') as string
   const res = await apiFetch(`/api/v1/class-groups/${id}/`, { method: 'DELETE' })
