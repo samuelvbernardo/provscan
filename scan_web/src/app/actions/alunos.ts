@@ -57,6 +57,45 @@ export async function createStudent(
   revalidatePath(`/turmas/${class_group}`)
 }
 
+export async function updateStudent(
+  _state: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const id = formData.get('id') as string
+  const class_group = formData.get('class_group') as string
+  const name = (formData.get('name') as string)?.trim()
+  const number = formData.get('number') as string
+
+  if (!name) return { error: 'Nome do aluno é obrigatório.' }
+  if (!number) return { error: 'Número do aluno é obrigatório.' }
+
+  let res: Response
+  try {
+    res = await apiFetch(`/api/v1/students/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, number: parseInt(number) }),
+    })
+  } catch {
+    return { error: 'Não foi possível conectar ao servidor.' }
+  }
+
+  if (res.status === 401) await clearSessionAndRedirect()
+
+  if (!res.ok) {
+    const data = await res.json()
+    const msg =
+      data.number?.[0] ??
+      data.name?.[0] ??
+      data.non_field_errors?.[0] ??
+      data.detail ??
+      'Erro ao atualizar aluno.'
+    return { error: msg }
+  }
+
+  revalidatePath(`/turmas/${class_group}`)
+  return { ok: true }
+}
+
 export async function deleteStudent(formData: FormData) {
   const id = formData.get('id') as string
   const class_group = formData.get('class_group') as string
