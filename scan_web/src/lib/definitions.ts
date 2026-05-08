@@ -47,3 +47,27 @@ export type PaginatedResponse<T> = {
   previous: string | null
   results: T[]
 }
+
+export type ScanResult = {
+  id: number
+  exam: number
+  exam_title: string
+  student: number | null
+  student_name: string | null
+  student_identified: boolean
+  student_number: string
+  answers: (string | null)[]
+  score: number
+  total_questions: number
+  image: string | null
+  warnings: string[]
+  created_at: string
+  updated_at: string
+}
+
+export type ScanFormState =
+  | {
+      error?: string
+      result?: ScanResult
+    }
+  | undefined
