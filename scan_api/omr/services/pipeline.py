@@ -13,6 +13,7 @@ from .layout import (
 )
 from .preprocess import preprocess_image_from_array
 from .detect import find_bubbles
+from .align import align_sheet
 
 
 IMAGE_WIDTH = 600
@@ -275,7 +276,14 @@ def process_image(
     if raw_image is None:
         raise ValueError(f"Imagem não encontrada: {path}")
 
-    image = cv2.resize(raw_image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+    try:
+        image = align_sheet(raw_image, output_width=IMAGE_WIDTH, output_height=IMAGE_HEIGHT, debug=settings.DEBUG)
+        if settings.DEBUG:
+            print("Alinhamento: OK (marcadores detectados)")
+    except Exception:
+        image = cv2.resize(raw_image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+        if settings.DEBUG:
+            print("Alinhamento: fallback para resize simples")
 
     image, thresh = preprocess_image_from_array(image)
 
