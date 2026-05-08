@@ -11,6 +11,7 @@ from rest_framework.test import APITestCase
 from core.models import ClassGroup, Student
 from omr.models import Exam, ScanResult
 from omr.api.v1.serializers import ExamSerializer
+from omr.services.report import _calculate_stats, generate_report_card
 
 User = get_user_model()
 
@@ -325,3 +326,237 @@ class OMRScanAPITests(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("image", res.data)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for report tests
+# ---------------------------------------------------------------------------
+
+def make_scan_result(exam, student=None, answers=None, score=None, student_number="01"):
+    if answers is None:
+        answers = exam.answer_key[:]
+    if score is None:
+        score = sum(1 for a, k in zip(answers, exam.answer_key) if a == k)
+    return ScanResult.objects.create(
+        exam=exam,
+        student=student,
+        student_number=student_number,
+        answers=answers,
+        score=score,
+        total_questions=exam.questions_count,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — _calculate_stats
+# ---------------------------------------------------------------------------
+
+class ReportStatsTests(TestCase):
+    def setUp(self):
+        self.cg = make_class_group()
+        self.exam = make_exam(self.cg)
+
+    def test_single_student_is_rank_1(self):
+        sr = make_scan_result(self.exam)
+        stats = _calculate_stats(sr)
+        self.assertEqual(stats["rank"], 1)
+        self.assertEqual(stats["total_students"], 1)
+
+    def test_rank_and_percentile_with_multiple_students(self):
+        # 3 students: scores 10, 8, 6
+        sr_top = make_scan_result(self.exam, score=10, student_number="01")
+        sr_mid = make_scan_result(self.exam, score=8, student_number="02")
+        sr_bot = make_scan_result(self.exam, score=6, student_number="03")
+
+        top_stats = _calculate_stats(sr_top)
+        mid_stats = _calculate_stats(sr_mid)
+        bot_stats = _calculate_stats(sr_bot)
+
+        self.assertEqual(top_stats["rank"], 1)
+        self.assertEqual(mid_stats["rank"], 2)
+        self.assertEqual(bot_stats["rank"], 3)
+
+        # Percentile = % of students who scored strictly below
+        self.assertEqual(top_stats["percentile"], round(2 / 3 * 100, 1))
+        self.assertEqual(mid_stats["percentile"], round(1 / 3 * 100, 1))
+        self.assertEqual(bot_stats["percentile"], 0.0)
+
+    def test_ci_all_correct(self):
+        # All students answer all questions correctly → CI = 100% for every question
+        make_scan_result(self.exam, student_number="01")
+        make_scan_result(self.exam, student_number="02")
+        sr = make_scan_result(self.exam, student_number="03")
+        stats = _calculate_stats(sr)
+        self.assertTrue(all(ci == 100.0 for ci in stats["ci_per_question"]))
+
+    def test_ci_none_correct(self):
+        # All students answer everything wrong → CI = 0%
+        wrong = ["D", "C", "B", "A"] * (self.exam.questions_count // 4)
+        wrong = wrong[: self.exam.questions_count]
+        make_scan_result(self.exam, answers=wrong, score=0, student_number="01")
+        make_scan_result(self.exam, answers=wrong, score=0, student_number="02")
+        sr = make_scan_result(self.exam, answers=wrong, score=0, student_number="03")
+        stats = _calculate_stats(sr)
+        self.assertTrue(all(ci == 0.0 for ci in stats["ci_per_question"]))
+
+    def test_ci_partial_correct(self):
+        # 2 of 4 students correct on Q1 → CI = 50%
+        key = self.exam.answer_key[:]
+        wrong_q1 = [("D" if key[0] != "D" else "C")] + key[1:]
+        make_scan_result(self.exam, answers=key, student_number="01")
+        make_scan_result(self.exam, answers=key, student_number="02")
+        make_scan_result(self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="03")
+        sr = make_scan_result(self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="04")
+        stats = _calculate_stats(sr)
+        self.assertEqual(stats["ci_per_question"][0], 50.0)
+
+    def test_ci_length_matches_questions(self):
+        sr = make_scan_result(self.exam)
+        stats = _calculate_stats(sr)
+        self.assertEqual(len(stats["ci_per_question"]), self.exam.questions_count)
+
+    def test_tied_students_same_rank(self):
+        sr_a = make_scan_result(self.exam, score=10, student_number="01")
+        sr_b = make_scan_result(self.exam, score=10, student_number="02")
+        make_scan_result(self.exam, score=5, student_number="03")
+        self.assertEqual(_calculate_stats(sr_a)["rank"], _calculate_stats(sr_b)["rank"])
+
+    def test_blank_answers_handled_in_ci(self):
+        # None answers should not crash CI calculation
+        blank = [None] * self.exam.questions_count
+        sr = make_scan_result(self.exam, answers=blank, score=0, student_number="01")
+        stats = _calculate_stats(sr)
+        self.assertEqual(len(stats["ci_per_question"]), self.exam.questions_count)
+
+
+# ---------------------------------------------------------------------------
+# Unit tests — generate_report_card (PDF bytes)
+# ---------------------------------------------------------------------------
+
+class GenerateReportCardTests(TestCase):
+    def setUp(self):
+        self.cg = make_class_group()
+        self.exam = make_exam(self.cg)
+
+    def test_returns_bytes(self):
+        sr = make_scan_result(self.exam)
+        result = generate_report_card(sr)
+        self.assertIsInstance(result, bytes)
+
+    def test_is_valid_pdf(self):
+        sr = make_scan_result(self.exam)
+        pdf = generate_report_card(sr)
+        self.assertTrue(pdf.startswith(b"%PDF"), "Bytes não são um PDF válido")
+
+    def test_pdf_with_identified_student(self):
+        student = Student.objects.create(class_group=self.cg, name="Ana Laura", number=1)
+        sr = make_scan_result(self.exam, student=student, student_number="01")
+        pdf = generate_report_card(sr)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_pdf_with_unidentified_student(self):
+        sr = make_scan_result(self.exam, student=None, student_number="??")
+        pdf = generate_report_card(sr)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_pdf_with_all_blank_answers(self):
+        blank = [None] * self.exam.questions_count
+        sr = make_scan_result(self.exam, answers=blank, score=0)
+        pdf = generate_report_card(sr)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_pdf_with_mixed_correct_wrong_blank(self):
+        key = self.exam.answer_key[:]
+        mixed = key[:5] + [None, None] + ["Z", "Z"] + key[9:]
+        sr = make_scan_result(self.exam, answers=mixed, score=5)
+        pdf = generate_report_card(sr)
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_pdf_not_empty(self):
+        sr = make_scan_result(self.exam)
+        pdf = generate_report_card(sr)
+        self.assertGreater(len(pdf), 1024, "PDF muito pequeno — provavelmente vazio")
+
+    def test_multiple_students_changes_rank(self):
+        # Top student and bottom student produce different rank text in PDF
+        sr_top = make_scan_result(self.exam, score=10, student_number="01")
+        wrong = ["D"] * self.exam.questions_count
+        sr_bot = make_scan_result(self.exam, answers=wrong, score=0, student_number="02")
+        pdf_top = generate_report_card(sr_top)
+        pdf_bot = generate_report_card(sr_bot)
+        self.assertNotEqual(pdf_top, pdf_bot)
+
+
+# ---------------------------------------------------------------------------
+# API tests — GET /api/v1/scan-results/{id}/report/
+# ---------------------------------------------------------------------------
+
+class ReportCardAPITests(APITestCase):
+    def setUp(self):
+        self.user = make_user()
+        self.client.force_authenticate(user=self.user)
+        self.cg = make_class_group()
+        self.exam = make_exam(self.cg)
+        self.scan_result = make_scan_result(self.exam)
+
+    def _url(self, pk=None):
+        pk = pk or self.scan_result.id
+        return f"/api/v1/scan-results/{pk}/report/"
+
+    def test_returns_200(self):
+        res = self.client.get(self._url())
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_content_type_is_pdf(self):
+        res = self.client.get(self._url())
+        self.assertEqual(res["Content-Type"], "application/pdf")
+
+    def test_response_is_valid_pdf(self):
+        res = self.client.get(self._url())
+        self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_content_disposition_is_attachment(self):
+        res = self.client.get(self._url())
+        self.assertIn("attachment", res["Content-Disposition"])
+        self.assertIn(".pdf", res["Content-Disposition"])
+
+    def test_unauthenticated_returns_401(self):
+        self.client.force_authenticate(user=None)
+        res = self.client.get(self._url())
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_nonexistent_returns_404(self):
+        res = self.client.get(self._url(pk=99999))
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_with_identified_student(self):
+        student = Student.objects.create(class_group=self.cg, name="Carlos", number=7)
+        sr = make_scan_result(self.exam, student=student, student_number="07")
+        res = self.client.get(self._url(pk=sr.id))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_with_unidentified_student(self):
+        sr = make_scan_result(self.exam, student=None, student_number="??")
+        res = self.client.get(self._url(pk=sr.id))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_with_all_blank_answers(self):
+        blank = [None] * self.exam.questions_count
+        sr = make_scan_result(self.exam, answers=blank, score=0)
+        res = self.client.get(self._url(pk=sr.id))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_with_multiple_students_in_same_exam(self):
+        make_scan_result(self.exam, student_number="02", score=8)
+        make_scan_result(self.exam, student_number="03", score=5)
+        res = self.client.get(self._url())
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.content.startswith(b"%PDF"))
+
+    def test_pdf_size_is_reasonable(self):
+        res = self.client.get(self._url())
+        self.assertGreater(len(res.content), 1024)
+        self.assertLess(len(res.content), 5 * 1024 * 1024)  # < 5 MB

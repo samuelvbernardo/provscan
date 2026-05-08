@@ -62,8 +62,22 @@ export default async function ResultadoDetailPage({
           </svg>
           Resultados
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900">{result.exam_title}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{date}</p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">{result.exam_title}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{date}</p>
+          </div>
+          <a
+            href={`/api/report/${id}`}
+            download
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Baixar boletim
+          </a>
+        </div>
       </div>
 
       {/* Header card */}
