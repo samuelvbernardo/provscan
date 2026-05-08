@@ -10,6 +10,11 @@ scan_api/db.sqlite3
 scan_api/db.sqlite3-journal
 scan_api/media/
 
+# Imagens de teste e debug do OMR
+scan_api/omr/*.jpg
+scan_api/omr/*.jpeg
+scan_api/omr/*.png
+
 # Environments / Secrets
 .env
 *.env

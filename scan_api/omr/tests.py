@@ -311,3 +311,17 @@ class OMRScanAPITests(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertGreater(len(res.data["warnings"]), 0)
+
+    def test_scan_image_too_large_returns_400(self):
+        large_image = SimpleUploadedFile(
+            "grande.png",
+            b"x" * (20 * 1024 * 1024 + 1),
+            content_type="image/png",
+        )
+        res = self.client.post(
+            self.URL,
+            {"exam_id": self.exam.id, "image": large_image},
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("image", res.data)

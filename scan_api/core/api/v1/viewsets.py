@@ -1,3 +1,4 @@
+from django.db.models import Count, Q
 from rest_framework import viewsets
 
 from core.api.v1.serializers import ClassGroupSerializer, StudentSerializer
@@ -5,7 +6,9 @@ from core.models import ClassGroup, Student
 
 
 class ClassGroupViewSet(viewsets.ModelViewSet):
-    queryset = ClassGroup.active.all()
+    queryset = ClassGroup.active.annotate(
+        students_count=Count("students", filter=Q(students__is_deleted=False))
+    ).all()
     serializer_class = ClassGroupSerializer
 
 

@@ -180,3 +180,9 @@ class ScanResultSerializer(serializers.ModelSerializer):
 class ScanUploadSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()
     image = serializers.ImageField()
+
+    def validate_image(self, value):
+        max_size = 20 * 1024 * 1024  # 20 MB
+        if value.size > max_size:
+            raise serializers.ValidationError("A imagem deve ter no máximo 20 MB.")
+        return value

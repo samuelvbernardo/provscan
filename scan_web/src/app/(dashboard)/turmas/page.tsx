@@ -4,22 +4,60 @@ import { deleteClassGroup } from '@/app/actions/turmas'
 import TurmaForm from './TurmaForm'
 import type { ClassGroup, PaginatedResponse } from '@/lib/definitions'
 
-async function getClassGroups(): Promise<ClassGroup[]> {
-  const res = await apiFetch('/api/v1/class-groups/')
-  if (!res.ok) return []
-  const data: PaginatedResponse<ClassGroup> = await res.json()
-  return data.results
+async function getClassGroups(page: number): Promise<PaginatedResponse<ClassGroup>> {
+  const res = await apiFetch(`/api/v1/class-groups/?page=${page}`)
+  if (!res.ok) return { count: 0, next: null, previous: null, results: [] }
+  return res.json()
 }
 
-export default async function TurmasPage() {
-  const turmas = await getClassGroups()
+function Pagination({ page, count }: { page: number; count: number }) {
+  const pageSize = 10
+  const totalPages = Math.ceil(count / pageSize)
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50">
+      <p className="text-xs text-slate-500">
+        Página {page} de {totalPages} ({count} turma{count !== 1 ? 's' : ''})
+      </p>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Link
+            href={`?page=${page - 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Anterior
+          </Link>
+        )}
+        {page < totalPages && (
+          <Link
+            href={`?page=${page + 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Próxima
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default async function TurmasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const data = await getClassGroups(page)
+  const turmas = data.results
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Turmas</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{turmas.length} turma{turmas.length !== 1 ? 's' : ''} cadastrada{turmas.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-slate-500 mt-0.5">{data.count} turma{data.count !== 1 ? 's' : ''} cadastrada{data.count !== 1 ? 's' : ''}</p>
         </div>
         <TurmaForm />
       </div>
@@ -80,6 +118,7 @@ export default async function TurmasPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} count={data.count} />
         </div>
       )}
     </div>

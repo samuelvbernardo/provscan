@@ -3,15 +3,53 @@ import { apiFetch } from '@/lib/api'
 import { deleteExam } from '@/app/actions/provas'
 import type { Exam, PaginatedResponse } from '@/lib/definitions'
 
-async function getExams(): Promise<Exam[]> {
-  const res = await apiFetch('/api/v1/exams/')
-  if (!res.ok) return []
-  const data: PaginatedResponse<Exam> = await res.json()
-  return data.results
+async function getExams(page: number): Promise<PaginatedResponse<Exam>> {
+  const res = await apiFetch(`/api/v1/exams/?page=${page}`)
+  if (!res.ok) return { count: 0, next: null, previous: null, results: [] }
+  return res.json()
 }
 
-export default async function ProvasPage() {
-  const provas = await getExams()
+function Pagination({ page, count }: { page: number; count: number }) {
+  const pageSize = 10
+  const totalPages = Math.ceil(count / pageSize)
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50">
+      <p className="text-xs text-slate-500">
+        Página {page} de {totalPages} ({count} prova{count !== 1 ? 's' : ''})
+      </p>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Link
+            href={`?page=${page - 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Anterior
+          </Link>
+        )}
+        {page < totalPages && (
+          <Link
+            href={`?page=${page + 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Próxima
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default async function ProvasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const data = await getExams(page)
+  const provas = data.results
 
   return (
     <div>
@@ -19,7 +57,7 @@ export default async function ProvasPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Provas</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {provas.length} prova{provas.length !== 1 ? 's' : ''} cadastrada{provas.length !== 1 ? 's' : ''}
+            {data.count} prova{data.count !== 1 ? 's' : ''} cadastrada{data.count !== 1 ? 's' : ''}
           </p>
         </div>
         <Link
@@ -103,6 +141,7 @@ export default async function ProvasPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} count={data.count} />
         </div>
       )}
     </div>

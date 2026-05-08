@@ -60,11 +60,11 @@ export async function createStudent(
 export async function deleteStudent(formData: FormData) {
   const id = formData.get('id') as string
   const class_group = formData.get('class_group') as string
-  try {
-    const res = await apiFetch(`/api/v1/students/${id}/`, { method: 'DELETE' })
-    if (res.status === 401) await clearSessionAndRedirect()
-  } catch {
-    // silently fail
+  const res = await apiFetch(`/api/v1/students/${id}/`, { method: 'DELETE' })
+  if (res.status === 401) await clearSessionAndRedirect()
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail ?? 'Não foi possível excluir o aluno.')
   }
   revalidatePath(`/turmas/${class_group}`)
 }

@@ -2,11 +2,10 @@ import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
 import type { ScanResult, PaginatedResponse } from '@/lib/definitions'
 
-async function getScanResults(): Promise<ScanResult[]> {
-  const res = await apiFetch('/api/v1/scan-results/')
-  if (!res.ok) return []
-  const data: PaginatedResponse<ScanResult> = await res.json()
-  return data.results
+async function getScanResults(page: number): Promise<PaginatedResponse<ScanResult>> {
+  const res = await apiFetch(`/api/v1/scan-results/?page=${page}`)
+  if (!res.ok) return { count: 0, next: null, previous: null, results: [] }
+  return res.json()
 }
 
 function ScoreBadge({ score, total }: { score: number; total: number }) {
@@ -25,15 +24,54 @@ function ScoreBadge({ score, total }: { score: number; total: number }) {
   )
 }
 
-export default async function ResultadosPage() {
-  const results = await getScanResults()
+function Pagination({ page, count }: { page: number; count: number }) {
+  const pageSize = 10
+  const totalPages = Math.ceil(count / pageSize)
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50">
+      <p className="text-xs text-slate-500">
+        Página {page} de {totalPages} ({count} resultado{count !== 1 ? 's' : ''})
+      </p>
+      <div className="flex gap-2">
+        {page > 1 && (
+          <Link
+            href={`?page=${page - 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Anterior
+          </Link>
+        )}
+        {page < totalPages && (
+          <Link
+            href={`?page=${page + 1}`}
+            className="rounded px-3 py-1 text-xs font-medium text-slate-600 border border-slate-300 hover:bg-white transition"
+          >
+            Próxima
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default async function ResultadosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam ?? '1') || 1)
+  const data = await getScanResults(page)
+  const results = data.results
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Resultados</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          {results.length} leitura{results.length !== 1 ? 's' : ''} realizada{results.length !== 1 ? 's' : ''}
+          {data.count} leitura{data.count !== 1 ? 's' : ''} realizada{data.count !== 1 ? 's' : ''}
         </p>
       </div>
 
@@ -113,6 +151,7 @@ export default async function ResultadosPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} count={data.count} />
         </div>
       )}
     </div>
