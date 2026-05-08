@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from drf_spectacular.utils import extend_schema
 
 from core.models import Student
@@ -45,8 +46,13 @@ class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ScanResultSerializer
 
 
+class ScanRateThrottle(UserRateThrottle):
+    scope = 'scan'
+
+
 class OMRViewSet(viewsets.ViewSet):
     serializer_class = ScanUploadSerializer
+    throttle_classes = [ScanRateThrottle]
 
     @extend_schema(
         request=ScanUploadSerializer,
