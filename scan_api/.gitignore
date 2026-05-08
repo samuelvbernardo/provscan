@@ -11,9 +11,9 @@ __pycache__/
 /media/
 
 # Imagens de teste e debug do OMR
-scan_api/omr/*.jpg
-scan_api/omr/*.jpeg
-scan_api/omr/*.png
+omr/*.jpg
+omr/*.jpeg
+omr/*.png
 
 # Environments / Secrets
 .env
