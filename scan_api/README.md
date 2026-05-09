@@ -42,11 +42,11 @@ O ambiente local usa SQLite por padrao (`DATABASE_URL=sqlite:///db.sqlite3`). O 
 ```text
 .envs/
   local/
-    .local
-    .local.example
+    .env.local
+    .env.local.example
   production/
-    .production
-    .production.example
+    .env.production
+    .env.production.example
 docker/
   local/
     docker-compose.yml
@@ -61,7 +61,7 @@ entrypoint.sh
 Na pasta `scan_api`:
 
 ```bash
-cp .envs/local/.local.example .envs/local/.local
+cp .envs/local/.env.local.example .envs/local/.env.local
 ```
 
 ```bash
@@ -109,10 +109,10 @@ docker compose -f docker/local/docker-compose.yml down
 Para deploy somente do backend, use o compose de producao:
 
 ```bash
-cp .envs/production/.production.example .envs/production/.production
+cp .envs/production/.env.production.example .envs/production/.env.production
 ```
 
-Edite `.envs/production/.production` com os valores reais do ambiente:
+Edite `.envs/production/.env.production` com os valores reais do ambiente:
 
 - `SECRET_KEY`: chave secreta forte do Django.
 - `DEBUG=False`: obrigatorio em producao.
@@ -149,7 +149,7 @@ O compose de producao nao monta o codigo local como volume. Apenas `media` e `st
 
 ### Variaveis operacionais
 
-As tarefas de startup podem ser controladas no `.envs/production/.production`:
+As tarefas de startup podem ser controladas no `.envs/production/.env.production`:
 
 ```env
 RUN_MIGRATIONS=true

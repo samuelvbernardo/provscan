@@ -13,7 +13,7 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
-DEFAULT_ENV_FILE = BASE_DIR / '.envs' / 'local' / '.local'
+DEFAULT_ENV_FILE = BASE_DIR / '.envs' / 'local' / '.env.local'
 ENV_FILE = Path(os.environ.get('DJANGO_ENV_FILE', DEFAULT_ENV_FILE))
 
 if ENV_FILE.exists():

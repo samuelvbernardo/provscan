@@ -6,7 +6,7 @@ services:
     container_name: provscan_backend
     restart: always
     env_file:
-      - ../../.envs/local/.local
+      - ../../.envs/local/.env.local
     volumes:
       - ../..:/app
       - media_data:/app/media
