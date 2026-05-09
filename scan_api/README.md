@@ -33,14 +33,39 @@ API para criação de provas, geração de cartões-resposta e correção autom�
 
 ## Configuração do ambiente
 
-Crie um arquivo `.env` dentro da pasta `scan_api` (no mesmo nível da `.env.example`) com as variáveis necessárias.
+Crie os arquivos de ambiente a partir dos exemplos em `.envs/local/` e `.envs/production/`.
+
+O ambiente local usa SQLite por padrao (`DATABASE_URL=sqlite:///db.sqlite3`). O ambiente de producao deve usar a URL PostgreSQL do Supabase.
+
+## Estrutura de Docker e envs
+
+```text
+.envs/
+  local/
+    .local
+    .local.example
+  production/
+    .production
+    .production.example
+docker/
+  local/
+    docker-compose.yml
+  production/
+    docker-compose.yml
+Dockerfile
+entrypoint.sh
+```
 
 ## Executando com Docker
 
-Na pasta que contém o `docker-compose.yml`:
+Na pasta `scan_api`:
 
 ```bash
-docker compose up --build
+cp .envs/local/.local.example .envs/local/.local
+```
+
+```bash
+docker compose -f docker/local/docker-compose.yml up --build
 ```
 
 A aplicação ficará disponível em:
@@ -54,7 +79,7 @@ A aplicação ficará disponível em:
 Com os containers em execução:
 
 ```bash
-docker compose exec backend python manage.py createsuperuser
+docker compose -f docker/local/docker-compose.yml exec backend python manage.py createsuperuser
 ```
 
 ### Migrations
@@ -62,7 +87,7 @@ docker compose exec backend python manage.py createsuperuser
 As migrations são aplicadas automaticamente no `entrypoint.sh`. Para executar manualmente:
 
 ```bash
-docker compose exec backend python manage.py migrate
+docker compose -f docker/local/docker-compose.yml exec backend python manage.py migrate
 ```
 
 ### Coletar arquivos estáticos
@@ -70,14 +95,72 @@ docker compose exec backend python manage.py migrate
 Executado automaticamente no `entrypoint.sh`. Para executar manualmente:
 
 ```bash
-docker compose exec backend python manage.py collectstatic --noinput
+docker compose -f docker/local/docker-compose.yml exec backend python manage.py collectstatic --noinput
 ```
 
 ### Parar containers
 
 ```bash
-docker compose down
+docker compose -f docker/local/docker-compose.yml down
 ```
+
+## Deploy em producao
+
+Para deploy somente do backend, use o compose de producao:
+
+```bash
+cp .envs/production/.production.example .envs/production/.production
+```
+
+Edite `.envs/production/.production` com os valores reais do ambiente:
+
+- `SECRET_KEY`: chave secreta forte do Django.
+- `DEBUG=False`: obrigatorio em producao.
+- `DATABASE_URL`: URL do banco PostgreSQL.
+- `ALLOWED_HOSTS`: dominios/IPs aceitos pela API, separados por virgula.
+- `CORS_ALLOWED_ORIGINS`: origem do frontend em producao, separada por virgula se houver mais de uma.
+
+Suba o container:
+
+```bash
+docker compose -f docker/production/docker-compose.yml up -d --build
+```
+
+Verifique o status:
+
+```bash
+docker compose -f docker/production/docker-compose.yml ps
+docker compose -f docker/production/docker-compose.yml logs -f backend
+```
+
+Atualizar a aplicacao:
+
+```bash
+docker compose -f docker/production/docker-compose.yml up -d --build
+```
+
+Parar:
+
+```bash
+docker compose -f docker/production/docker-compose.yml down
+```
+
+O compose de producao nao monta o codigo local como volume. Apenas `media` e `staticfiles` ficam persistidos em volumes Docker.
+
+### Variaveis operacionais
+
+As tarefas de startup podem ser controladas no `.envs/production/.production`:
+
+```env
+RUN_MIGRATIONS=true
+RUN_COLLECTSTATIC=true
+RUN_CREATE_CACHE_TABLE=false
+RUN_DEPLOY_CHECKS=false
+GUNICORN_WORKERS=3
+GUNICORN_TIMEOUT=120
+```
+
+Em deploys com mais de uma replica, considere executar migrations em uma etapa separada e definir `RUN_MIGRATIONS=false` nos containers web.
 
 ## Estrutura da API
 

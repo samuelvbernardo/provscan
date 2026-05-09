@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login']
-const API_URL = process.env.API_URL ?? 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
 async function tryRefresh(refreshToken: string): Promise<string | null> {
   try {
