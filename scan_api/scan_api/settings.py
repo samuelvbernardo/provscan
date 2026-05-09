@@ -12,7 +12,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False)
 )
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+DEFAULT_ENV_FILE = BASE_DIR / '.envs' / 'local' / '.local'
+ENV_FILE = Path(os.environ.get('DJANGO_ENV_FILE', DEFAULT_ENV_FILE))
+
+if ENV_FILE.exists():
+    environ.Env.read_env(str(ENV_FILE), overwrite=True)
+else:
+    environ.Env.read_env(os.path.join(BASE_DIR, '.env'), overwrite=True)
 
 
 SECRET_KEY = env('SECRET_KEY')
@@ -57,8 +64,8 @@ INSTALLED_APPS = [
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'django_cache',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'provscan-cache',
     }
 }
 

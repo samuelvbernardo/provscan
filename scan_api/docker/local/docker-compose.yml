@@ -1,12 +1,14 @@
 services:
   backend:
-    build: .
+    build:
+      context: ../..
+      dockerfile: Dockerfile
     container_name: provscan_backend
     restart: always
     env_file:
-      - .env
+      - ../../.envs/local/.local
     volumes:
-      - .:/app
+      - ../..:/app
       - media_data:/app/media
       - static_data:/app/staticfiles
     ports:

@@ -1,0 +1,17 @@
+SECRET_KEY=change-me-to-a-long-random-secret
+DEBUG=False
+DJANGO_ENV_FILE=.envs/production/.production
+DATABASE_URL=postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+ALLOWED_HOSTS=api.example.com,localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=https://example.com
+
+# Startup tasks. Keep true for simple single-container deploys.
+RUN_MIGRATIONS=true
+RUN_COLLECTSTATIC=true
+RUN_CREATE_CACHE_TABLE=false
+RUN_DEPLOY_CHECKS=false
+
+# Gunicorn tuning.
+GUNICORN_WORKERS=3
+GUNICORN_TIMEOUT=120
+GUNICORN_BIND=0.0.0.0:8000

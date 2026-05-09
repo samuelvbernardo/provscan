@@ -18,6 +18,13 @@ omr/*.png
 # Environments / Secrets
 .env
 *.env
+.env.*
+!.env*.example
+.envs/**
+!.envs/
+!.envs/local/
+!.envs/production/
+!.envs/**/*.example
 .venv/
 venv/
 ENV/

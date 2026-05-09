@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { AuthFormState } from '@/lib/definitions'
 
-const API_URL = process.env.API_URL ?? 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
 export async function login(state: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const email = formData.get('email') as string

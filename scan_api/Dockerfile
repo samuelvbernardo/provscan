@@ -2,23 +2,21 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# Dependências do sistema
-# libpq-dev/build-essential: suporte a PostgreSQL/psycopg2
-# libglib2.0-0/libgl1: suporte ao OpenCV
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
+# Dependencias de runtime para OpenCV headless em ambiente slim.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
-    libgl1 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/
 
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt
 
 COPY . /app/
 
