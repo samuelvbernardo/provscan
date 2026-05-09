@@ -54,9 +54,9 @@ export default async function TurmasPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Turmas</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Turmas</h1>
           <p className="text-sm text-slate-500 mt-0.5">{data.count} turma{data.count !== 1 ? 's' : ''} cadastrada{data.count !== 1 ? 's' : ''}</p>
         </div>
         <TurmaForm />
@@ -70,7 +70,30 @@ export default async function TurmasPage({
           <p className="text-sm">Nenhuma turma cadastrada ainda.</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <>
+        <div className="sm:hidden space-y-3">
+          {turmas.map((turma) => (
+            <div key={turma.id} className="bg-white border border-slate-200 rounded-lg p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-slate-900 truncate">{turma.name}</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {turma.school_year ?? 'Sem ano/série'} · {turma.students_count} aluno{turma.students_count !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${turma.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {turma.is_active ? 'Ativa' : 'Inativa'}
+                </span>
+              </div>
+              <Link href={`/turmas/${turma.id}`} className="mt-3 inline-flex text-sm font-medium text-indigo-600">
+                Ver alunos
+              </Link>
+            </div>
+          ))}
+          <Pagination page={page} count={data.count} />
+        </div>
+
+        <div className="hidden sm:block bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
@@ -89,6 +112,7 @@ export default async function TurmasPage({
           </table>
           <Pagination page={page} count={data.count} />
         </div>
+        </>
       )}
     </div>
   )

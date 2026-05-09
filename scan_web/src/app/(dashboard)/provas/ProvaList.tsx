@@ -42,7 +42,59 @@ export default function ProvaList({ provas }: { provas: Exam[] }) {
 
   return (
     <>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="sm:hidden space-y-3">
+        {provas.map((prova) => (
+          <div
+            key={prova.id}
+            className={`border rounded-lg p-4 bg-white ${selected.has(prova.id) ? 'border-indigo-300 ring-1 ring-indigo-100' : 'border-slate-200'}`}
+          >
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={selected.has(prova.id)}
+                onChange={() => toggle(prova.id)}
+                className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <div className="min-w-0 flex-1">
+                <h2 className="font-semibold text-slate-900 truncate">{prova.title}</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {prova.questions_count}q · {prova.options_count} alt.
+                </p>
+                <p className="text-xs text-slate-400 mt-1 truncate">
+                  {prova.class_group_names.join(', ') || 'Sem turma'}
+                </p>
+              </div>
+              <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${prova.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                {prova.is_active ? 'Ativa' : 'Inativa'}
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              {prova.template_file ? (
+                <a
+                  href={prova.template_file}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600"
+                >
+                  <DownloadIcon />
+                  Cartão
+                </a>
+              ) : (
+                <span className="text-xs text-slate-400">Sem cartão</span>
+              )}
+              <form action={deleteExam}>
+                <input type="hidden" name="id" value={prova.id} />
+                <button type="submit" className="text-xs font-medium text-red-500">
+                  Excluir
+                </button>
+              </form>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden sm:block bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
@@ -126,11 +178,11 @@ export default function ProvaList({ provas }: { provas: Exam[] }) {
 
       {/* Sticky bar */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-4 bg-slate-900 text-white rounded-xl px-5 py-3 shadow-xl">
+        <div className="fixed bottom-4 left-3 right-3 sm:bottom-6 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50">
+          <div className="flex items-center justify-between gap-3 bg-slate-900 text-white rounded-xl px-4 sm:px-5 py-3 shadow-xl">
             <span className="text-sm">
               <span className="font-semibold">{selected.size}</span>{' '}
-              prova{selected.size !== 1 ? 's' : ''} selecionada{selected.size !== 1 ? 's' : ''}
+              <span className="hidden sm:inline">prova{selected.size !== 1 ? 's' : ''} selecionada{selected.size !== 1 ? 's' : ''}</span>
             </span>
             <button
               onClick={() => setSelected(new Set())}
@@ -140,7 +192,7 @@ export default function ProvaList({ provas }: { provas: Exam[] }) {
             </button>
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 px-4 py-1.5 text-sm font-semibold transition"
+              className="flex items-center gap-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 px-3 sm:px-4 py-1.5 text-sm font-semibold transition"
             >
               <DownloadIcon />
               Gerar relatório

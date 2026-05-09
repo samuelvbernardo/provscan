@@ -68,8 +68,8 @@ export default async function ResultadosPage({
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Resultados</h1>
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Resultados</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           {data.count} leitura{data.count !== 1 ? 's' : ''} realizada{data.count !== 1 ? 's' : ''}
         </p>
@@ -86,7 +86,39 @@ export default async function ResultadosPage({
           </Link>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <>
+        <div className="sm:hidden space-y-3">
+          {results.map((r) => (
+            <div key={r.id} className="bg-white border border-slate-200 rounded-lg p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-slate-900 truncate">{r.exam_title}</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {r.student_identified
+                      ? r.student_name
+                      : r.student_number && r.student_number !== '??' && r.student_number !== '?'
+                      ? `Nº ${r.student_number}`
+                      : 'Aluno não identificado'}
+                  </p>
+                </div>
+                <ScoreBadge score={r.score} total={r.total_questions} />
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                {r.warnings.length > 0 ? (
+                  <span className="text-xs text-amber-700">{r.warnings.length} aviso{r.warnings.length !== 1 ? 's' : ''}</span>
+                ) : (
+                  <span className="text-xs text-slate-400">Sem avisos</span>
+                )}
+                <Link href={`/resultados/${r.id}`} className="text-sm font-medium text-indigo-600">
+                  Detalhes
+                </Link>
+              </div>
+            </div>
+          ))}
+          <Pagination page={page} count={data.count} />
+        </div>
+
+        <div className="hidden sm:block bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
@@ -153,6 +185,7 @@ export default async function ResultadosPage({
           </table>
           <Pagination page={page} count={data.count} />
         </div>
+        </>
       )}
     </div>
   )
