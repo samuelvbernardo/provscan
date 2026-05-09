@@ -6,7 +6,7 @@ services:
     container_name: provscan_backend_prod
     restart: unless-stopped
     env_file:
-      - ../../.envs/production/.production
+      - ../../.envs/production/.env.production
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
