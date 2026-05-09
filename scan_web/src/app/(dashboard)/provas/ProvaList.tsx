@@ -70,19 +70,13 @@ export default function ProvaList({ provas }: { provas: Exam[] }) {
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3">
-              {prova.template_file ? (
-                <a
-                  href={prova.template_file}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600"
-                >
-                  <DownloadIcon />
-                  Cartão
-                </a>
-              ) : (
-                <span className="text-xs text-slate-400">Sem cartão</span>
-              )}
+              <a
+                href={`/api/exam-template/${prova.id}`}
+                className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600"
+              >
+                <DownloadIcon />
+                Cartão
+              </a>
               <form action={deleteExam}>
                 <input type="hidden" name="id" value={prova.id} />
                 <button type="submit" className="text-xs font-medium text-red-500">
@@ -145,17 +139,13 @@ export default function ProvaList({ provas }: { provas: Exam[] }) {
                 </td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-end gap-3">
-                    {prova.template_file && (
-                      <a
-                        href={prova.template_file}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm transition"
-                      >
-                        <DownloadIcon />
-                        Cartão
-                      </a>
-                    )}
+                    <a
+                      href={`/api/exam-template/${prova.id}`}
+                      className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm transition"
+                    >
+                      <DownloadIcon />
+                      Cartão
+                    </a>
                     <form action={deleteExam}>
                       <input type="hidden" name="id" value={prova.id} />
                       <button

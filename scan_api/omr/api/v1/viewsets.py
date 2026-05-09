@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -37,6 +38,27 @@ class ExamViewSet(viewsets.ModelViewSet):
         relative_path = generate_exam_template(exam)
         exam.template_file = relative_path
         exam.save(update_fields=["template_file"])
+
+    @extend_schema(
+        responses={(200, "application/pdf"): bytes},
+        description="Retorna o cartão-resposta da prova em PDF.",
+    )
+    @action(detail=True, methods=["get"], url_path="template")
+    def template(self, request, pk=None):
+        exam = self.get_object()
+
+        if not exam.template_file or not default_storage.exists(exam.template_file.name):
+            relative_path = generate_exam_template(exam)
+            exam.template_file = relative_path
+            exam.save(update_fields=["template_file"])
+
+        filename = f"cartao_resposta_{exam.id}.pdf"
+
+        with exam.template_file.open("rb") as file:
+            response = HttpResponse(file.read(), content_type="application/pdf")
+
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     @extend_schema(
         responses={(200, "application/pdf"): bytes},
