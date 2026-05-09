@@ -8,15 +8,16 @@ from django.utils.translation import gettext_lazy as _
 from core.models import Student
 from omr.models import Exam, ScanResult
 from omr.services.pipeline import process_image
-
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-
 from omr.services.template_generator import generate_exam_template
 
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
+    filter_horizontal = ("class_groups",)
+
+    def get_class_groups(self, obj):
+        return ", ".join(obj.class_groups.values_list("name", flat=True).order_by("name")) or "—"
+    get_class_groups.short_description = "Turmas"
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -26,7 +27,7 @@ class ExamAdmin(admin.ModelAdmin):
             or "questions_count" in form.changed_data
             or "options_count" in form.changed_data
             or "title" in form.changed_data
-            or "class_group" in form.changed_data
+            or "class_groups" in form.changed_data
         )
 
         if should_generate:
@@ -37,7 +38,7 @@ class ExamAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "title",
-        "class_group",
+        "get_class_groups",
         "questions_count",
         "options_count",
         "is_active",
@@ -47,11 +48,11 @@ class ExamAdmin(admin.ModelAdmin):
     search_fields = (
         "title",
         "description",
-        "class_group__name",
+        "class_groups__name",
     )
 
     list_filter = (
-        "class_group",
+        "class_groups",
         "is_active",
         "created_at",
     )
@@ -69,7 +70,7 @@ class ExamAdmin(admin.ModelAdmin):
             "fields": (
                 "title",
                 "description",
-                "class_group",
+                "class_groups",
                 "questions_count",
                 "options_count",
                 "answer_key",
@@ -163,7 +164,6 @@ class ScanResultAdmin(admin.ModelAdmin):
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 for chunk in image_file.chunks():
                     temp_file.write(chunk)
-
                 temp_path = temp_file.name
 
             try:
@@ -181,7 +181,6 @@ class ScanResultAdmin(admin.ModelAdmin):
             obj.answers = result["respostas"]
             obj.score = result["nota"]
             obj.total_questions = len(obj.exam.answer_key)
-
             obj.student = None
 
             try:
@@ -189,11 +188,12 @@ class ScanResultAdmin(admin.ModelAdmin):
             except (TypeError, ValueError):
                 student_number_int = None
 
-            if obj.exam.class_group and student_number_int is not None:
+            exam_class_groups = obj.exam.class_groups.all()
+            if exam_class_groups.exists() and student_number_int is not None:
                 obj.student = Student.active.filter(
-                class_group=obj.exam.class_group,
-                number=student_number_int,
-                is_active=True,
-            ).first()
+                    class_group__in=exam_class_groups,
+                    number=student_number_int,
+                    is_active=True,
+                ).first()
 
         super().save_model(request, obj, form, change)

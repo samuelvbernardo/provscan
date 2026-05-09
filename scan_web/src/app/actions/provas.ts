@@ -19,13 +19,13 @@ export async function createExam(
 ): Promise<FormState> {
   const title = (formData.get('title') as string)?.trim()
   const description = (formData.get('description') as string)?.trim()
-  const class_group = formData.get('class_group') as string
+  const class_groups = formData.getAll('class_groups').map((id) => parseInt(id as string))
   const questions_count = parseInt(formData.get('questions_count') as string)
   const options_count = parseInt(formData.get('options_count') as string)
   const answer_key_raw = formData.get('answer_key') as string
 
   if (!title) return { error: 'Título da prova é obrigatório.' }
-  if (!class_group) return { error: 'Selecione uma turma.' }
+  if (class_groups.length === 0) return { error: 'Selecione ao menos uma turma.' }
 
   let answer_key: string[]
   try {
@@ -46,7 +46,7 @@ export async function createExam(
       body: JSON.stringify({
         title,
         description: description || null,
-        class_group: parseInt(class_group),
+        class_groups,
         questions_count,
         options_count,
         answer_key,

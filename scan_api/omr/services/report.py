@@ -134,8 +134,11 @@ def generate_report_card(scan_result: ScanResult) -> bytes:
     story.append(Paragraph(student_name, title_style))
     story.append(Paragraph(scan_result.exam.title, subtitle_style))
 
-    if scan_result.exam.class_group:
-        story.append(Paragraph(scan_result.exam.class_group.name, subtitle_style))
+    group_names = ", ".join(
+        scan_result.exam.class_groups.values_list("name", flat=True).order_by("name")
+    )
+    if group_names:
+        story.append(Paragraph(group_names, subtitle_style))
 
     story.append(Spacer(1, 4 * mm))
     story.append(HRFlowable(width="100%", thickness=1, color=COLOR_BORDER))

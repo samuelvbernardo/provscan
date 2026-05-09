@@ -67,22 +67,34 @@ export default function ExamForm({ classGroups }: { classGroups: ClassGroup[] })
         />
       </div>
 
-      {/* Turma */}
+      {/* Turmas */}
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Turma <span className="text-red-500">*</span>
+          Turmas <span className="text-red-500">*</span>
         </label>
-        <select
-          name="class_group"
-          required
-          defaultValue=""
-          className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-        >
-          <option value="" disabled>Selecione uma turma...</option>
-          {classGroups.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+        {classGroups.length === 0 ? (
+          <p className="text-sm text-slate-400">Nenhuma turma cadastrada.</p>
+        ) : (
+          <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 max-h-48 overflow-y-auto">
+            {classGroups.map((t) => (
+              <label
+                key={t.id}
+                className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 transition"
+              >
+                <input
+                  type="checkbox"
+                  name="class_groups"
+                  value={t.id}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-slate-700">{t.name}</span>
+                {t.school_year && (
+                  <span className="text-xs text-slate-400 ml-auto">{t.school_year}</span>
+                )}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Nº questões + alternativas */}

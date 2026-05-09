@@ -16,6 +16,7 @@ from omr.api.v1.serializers import (
     ScanUploadSerializer,
 )
 from omr.models import Exam, ScanResult
+from omr.services.class_report import generate_class_report as generate_class_report_pdf
 from omr.services.pipeline import process_image
 from omr.services.report import generate_report_card
 from omr.services.template_generator import generate_exam_template
@@ -27,25 +28,67 @@ class ExamViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         exam = serializer.save()
-
         relative_path = generate_exam_template(exam)
         exam.template_file = relative_path
         exam.save(update_fields=["template_file"])
 
     def perform_update(self, serializer):
         exam = serializer.save()
-
         relative_path = generate_exam_template(exam)
         exam.template_file = relative_path
         exam.save(update_fields=["template_file"])
+
+    @extend_schema(
+        responses={(200, "application/pdf"): bytes},
+        description="Gera relatório de resultados de múltiplas provas em PDF.",
+    )
+    @action(detail=False, methods=["get"], url_path="class-report")
+    def class_report(self, request):
+        raw = request.query_params.get("exam_ids", "")
+        try:
+            exam_ids = [int(x) for x in raw.split(",") if x.strip()]
+        except ValueError:
+            return Response(
+                {"detail": "exam_ids inválidos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not exam_ids:
+            return Response(
+                {"detail": "Informe ao menos um exam_id."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exams = list(
+            Exam.active.filter(id__in=exam_ids)
+            .prefetch_related("class_groups")
+            .order_by("title")
+        )
+
+        if not exams:
+            return Response(
+                {"detail": "Nenhuma prova encontrada."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            pdf_bytes = generate_class_report_pdf(exams)
+        except Exception:
+            return Response(
+                {"detail": "Não foi possível gerar o relatório."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="relatorio_turmas.pdf"'
+        return response
 
 
 class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ScanResult.active.select_related(
         "exam",
-        "exam__class_group",
         "student",
-    ).all()
+    ).prefetch_related("exam__class_groups").all()
     serializer_class = ScanResultSerializer
 
     @extend_schema(
@@ -134,9 +177,10 @@ class OMRViewSet(viewsets.ViewSet):
         except (TypeError, ValueError):
             student_number_int = None
 
-        if exam.class_group and student_number_int is not None:
+        exam_class_groups = exam.class_groups.all()
+        if exam_class_groups.exists() and student_number_int is not None:
             student = Student.active.filter(
-                class_group=exam.class_group,
+                class_group__in=exam_class_groups,
                 number=student_number_int,
                 is_active=True,
             ).first()
