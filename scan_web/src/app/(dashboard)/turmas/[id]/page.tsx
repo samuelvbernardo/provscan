@@ -41,9 +41,9 @@ export default async function TurmaDetailPage({
           Turmas
         </Link>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{turma.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{turma.name}</h1>
             <p className="text-sm text-slate-500 mt-0.5">
               {turma.school_year && <span>{turma.school_year} · </span>}
               {alunos.length} aluno{alunos.length !== 1 ? 's' : ''}
@@ -61,7 +61,26 @@ export default async function TurmaDetailPage({
           <p className="text-sm">Nenhum aluno cadastrado nessa turma.</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <>
+        <div className="sm:hidden space-y-3">
+          {alunos.map((aluno) => (
+            <div key={aluno.id} className="bg-white border border-slate-200 rounded-lg p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-mono text-slate-400">
+                    Nº {String(aluno.number).padStart(2, '0')}
+                  </p>
+                  <h2 className="mt-1 font-semibold text-slate-900 truncate">{aluno.name}</h2>
+                </div>
+                <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${aluno.is_active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                  {aluno.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden sm:block bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
@@ -78,6 +97,7 @@ export default async function TurmaDetailPage({
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )

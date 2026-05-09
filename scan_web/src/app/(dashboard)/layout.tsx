@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center gap-2.5">
               <div className="flex items-center justify-center w-8 h-8 bg-indigo-600 rounded-lg">
@@ -55,9 +55,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </form>
         </div>
+        <nav className="sm:hidden border-t border-slate-100 overflow-x-auto">
+          <div className="flex items-center gap-1 px-3 py-2 min-w-max">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         {children}
       </main>
     </div>

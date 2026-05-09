@@ -53,16 +53,16 @@ export default async function ProvasPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Provas</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Provas</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {data.count} prova{data.count !== 1 ? 's' : ''} cadastrada{data.count !== 1 ? 's' : ''}
           </p>
         </div>
         <Link
           href="/provas/nova"
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
