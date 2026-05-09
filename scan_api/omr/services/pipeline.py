@@ -14,6 +14,7 @@ from .layout import (
 from .preprocess import preprocess_image_from_array
 from .detect import find_bubbles
 from .align import align_sheet
+from .image_io import load_image_for_omr
 
 
 IMAGE_WIDTH = 600
@@ -30,7 +31,7 @@ def mm_to_px_y(mm_value):
     return mm_value * IMAGE_HEIGHT / PAGE_HEIGHT_MM
 
 
-def score_bolha(image, thresh, x_centro, y_centro, raio=4):
+def score_bolha(image, thresh, x_centro, y_centro, raio=4, gray=None, hsv=None):
     """
     Lê apenas o centro da bolha.
     Evita contar a borda da bolha vazia.
@@ -51,8 +52,14 @@ def score_bolha(image, thresh, x_centro, y_centro, raio=4):
         area = roi_thresh.shape[0] * roi_thresh.shape[1]
         score_thresh = total / float(area)
 
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    if hsv is None:
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    if gray is None:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     roi_hsv = hsv[y1:y2, x1:x2]
+    roi_gray = gray[y1:y2, x1:x2]
 
     if roi_hsv.size == 0:
         score_cor = 0
@@ -60,7 +67,12 @@ def score_bolha(image, thresh, x_centro, y_centro, raio=4):
         saturacao = roi_hsv[:, :, 1]
         score_cor = cv2.mean(saturacao)[0] / 255.0
 
-    return max(score_thresh, score_cor)
+    if roi_gray.size == 0:
+        score_escuro = 0
+    else:
+        score_escuro = max(0.0, 1.0 - (cv2.mean(roi_gray)[0] / 245.0))
+
+    return max(score_thresh, score_cor, score_escuro)
 
 
 def escolher_marcacao(scores, limite_minimo=0.35, diferenca_minima=0.12):
@@ -101,6 +113,8 @@ def ler_numero_aluno(image, thresh):
     row_gap_mm = STUDENT_NUMBER_ROW_GAP_MM
 
     numero = ""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     for idx_coluna, x_mm in enumerate(colunas_x_mm, start=1):
         x_centro = mm_to_px_x(x_mm)
@@ -117,6 +131,8 @@ def ler_numero_aluno(image, thresh):
                 x_centro=x_centro,
                 y_centro=y_centro,
                 raio=4,
+                gray=gray,
+                hsv=hsv,
             )
 
             scores.append(score)
@@ -126,8 +142,8 @@ def ler_numero_aluno(image, thresh):
 
         digito = escolher_marcacao(
             scores,
-            limite_minimo=0.35,
-            diferenca_minima=0.12,
+            limite_minimo=0.28,
+            diferenca_minima=0.10,
         )
 
         if digito is None:
@@ -152,6 +168,8 @@ def processar_respostas(image, thresh, questions_count, options_count):
     """
 
     respostas = []
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     for question_index in range(questions_count):
         question_number = question_index + 1
@@ -176,6 +194,8 @@ def processar_respostas(image, thresh, questions_count, options_count):
                 x_centro=x_centro,
                 y_centro=y_centro,
                 raio=4,
+                gray=gray,
+                hsv=hsv,
             )
 
             scores.append(score)
@@ -185,8 +205,8 @@ def processar_respostas(image, thresh, questions_count, options_count):
 
         marcada = escolher_marcacao(
             scores,
-            limite_minimo=0.35,
-            diferenca_minima=0.12,
+            limite_minimo=0.28,
+            diferenca_minima=0.10,
         )
 
         if marcada is None:
@@ -271,19 +291,18 @@ def process_image(
     questions_count=8,
     options_count=5,
 ):
-    raw_image = cv2.imread(path)
-
-    if raw_image is None:
-        raise ValueError(f"Imagem não encontrada: {path}")
+    raw_image = load_image_for_omr(path)
 
     try:
         image = align_sheet(raw_image, output_width=IMAGE_WIDTH, output_height=IMAGE_HEIGHT, debug=settings.DEBUG)
         if settings.DEBUG:
             print("Alinhamento: OK (marcadores detectados)")
-    except Exception:
-        image = cv2.resize(raw_image, (IMAGE_WIDTH, IMAGE_HEIGHT))
+    except Exception as exc:
         if settings.DEBUG:
-            print("Alinhamento: fallback para resize simples")
+            print("Alinhamento: falhou ao detectar marcadores")
+        raise ValueError(
+            "Nao foi possivel alinhar o cartao. Garanta que os quatro marcadores pretos aparecam na foto."
+        ) from exc
 
     image, thresh = preprocess_image_from_array(image)
 

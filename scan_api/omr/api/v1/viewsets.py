@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 
@@ -21,6 +22,9 @@ from omr.services.class_report import generate_class_report as generate_class_re
 from omr.services.pipeline import process_image
 from omr.services.report import generate_report_card
 from omr.services.template_generator import generate_exam_template
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExamViewSet(viewsets.ModelViewSet):
@@ -184,8 +188,9 @@ class OMRViewSet(viewsets.ViewSet):
                 options_count=exam.options_count,
             )
         except Exception:
+            logger.exception("Falha ao processar imagem OMR para a prova %s", exam.id)
             return Response(
-                {"detail": "Não foi possível processar a imagem. Verifique se o cartão está bem iluminado, centralizado e sem dobras."},
+                {"detail": "Não foi possível processar a imagem. Verifique se os quatro marcadores pretos aparecem na foto, com boa iluminação, foco e sem cortes."},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         finally:

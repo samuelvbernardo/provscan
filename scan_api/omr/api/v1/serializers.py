@@ -3,6 +3,10 @@ from drf_spectacular.utils import extend_schema_field
 
 from core.models import ClassGroup
 from omr.models import Exam, ScanResult
+from omr.services.image_io import register_heif_opener
+
+
+register_heif_opener()
 
 
 class ExamSerializer(serializers.ModelSerializer):

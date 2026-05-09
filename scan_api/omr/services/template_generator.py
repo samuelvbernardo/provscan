@@ -14,6 +14,7 @@ from .layout import (
     READ_AREA_LEFT_MM,
     READ_AREA_RIGHT_MM,
     READ_AREA_TOP_MM,
+    MARKER_SIZE_MM,
     STUDENT_NUMBER_COLUMNS_X_MM,
     STUDENT_NUMBER_ROW_GAP_MM,
     STUDENT_NUMBER_START_X_MM,
@@ -48,7 +49,7 @@ def generate_exam_template(exam):
     # -----------------------------
     # MARCADORES DA ÁREA DE LEITURA
     # -----------------------------
-    marker_size = 7 * mm
+    marker_size = MARKER_SIZE_MM * mm
 
     # Área útil que precisa aparecer na foto.
     # Os marcadores ficam próximos ao bloco do gabarito,
