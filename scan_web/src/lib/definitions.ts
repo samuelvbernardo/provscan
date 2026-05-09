@@ -31,8 +31,8 @@ export type Exam = {
   id: number
   title: string
   description: string | null
-  class_group: number
-  class_group_name: string
+  class_groups: number[]
+  class_group_names: string[]
   questions_count: number
   options_count: number
   answer_key: string[]

@@ -84,8 +84,11 @@ def generate_exam_template(exam):
     c.setFont("Helvetica", 10)
     c.drawString(25 * mm, page_height - 25 * mm, f"Prova: {exam.title}")
 
-    if exam.class_group:
-        c.drawString(25 * mm, page_height - 31 * mm, f"Turma: {exam.class_group.name}")
+    group_names = ", ".join(
+        exam.class_groups.values_list("name", flat=True).order_by("name")
+    )
+    if group_names:
+        c.drawString(25 * mm, page_height - 31 * mm, f"Turma: {group_names}")
 
     c.drawString(
         25 * mm,

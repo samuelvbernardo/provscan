@@ -26,14 +26,15 @@ def make_class_group(name="Turma OMR"):
 
 def make_exam(cg, title="Prova Teste", questions=10, options=4):
     answer_key = ["A", "B", "C", "D"] * (questions // 4) + ["A"] * (questions % 4)
-    return Exam.objects.create(
+    exam = Exam.objects.create(
         title=title,
-        class_group=cg,
         questions_count=questions,
         options_count=options,
         answer_key=answer_key[:questions],
         is_active=True,
     )
+    exam.class_groups.add(cg)
+    return exam
 
 
 def make_png_image():
@@ -49,7 +50,7 @@ class ExamSerializerTests(TestCase):
         self.cg = make_class_group()
         self.base = {
             "title": "Prova X",
-            "class_group": self.cg.id,
+            "class_groups": [self.cg.id],
             "questions_count": 10,
             "options_count": 4,
             "answer_key": ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B"],
@@ -119,7 +120,7 @@ class ExamAPITests(APITestCase):
             self.URL,
             {
                 "title": "Prova API",
-                "class_group": self.cg.id,
+                "class_groups": [self.cg.id],
                 "questions_count": 10,
                 "options_count": 4,
                 "answer_key": ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B"],
@@ -137,7 +138,7 @@ class ExamAPITests(APITestCase):
             self.URL,
             {
                 "title": "",
-                "class_group": self.cg.id,
+                "class_groups": [self.cg.id],
                 "questions_count": 10,
                 "options_count": 4,
                 "answer_key": ["A"] * 10,

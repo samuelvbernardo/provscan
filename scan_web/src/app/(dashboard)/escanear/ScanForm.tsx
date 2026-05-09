@@ -157,7 +157,7 @@ export default function ScanForm({ exams }: { exams: Exam[] }) {
             <option value="" disabled>Selecione uma prova...</option>
             {exams.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.title} — {e.class_group_name}
+                {e.title} — {e.class_group_names.join(', ')}
               </option>
             ))}
           </select>

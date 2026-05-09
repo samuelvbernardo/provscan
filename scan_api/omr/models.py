@@ -21,11 +21,11 @@ class Exam(BaseModel):
         null=True,
     )
 
-    class_group = models.ForeignKey(
+    class_groups = models.ManyToManyField(
         ClassGroup,
-        on_delete=models.PROTECT,
+        blank=True,
         related_name="exams",
-        verbose_name=_("Turma"),
+        verbose_name=_("Turmas"),
     )
 
     questions_count = models.PositiveIntegerField(
