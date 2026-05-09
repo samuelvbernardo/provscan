@@ -143,6 +143,19 @@ export default function ScanForm({ exams }: { exams: Exam[] }) {
   return (
     <div>
       <form action={action} className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Para uma boa leitura
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-slate-600">
+            <li>Os 4 marcadores pretos precisam aparecer na foto.</li>
+            <li>A folha não pode estar cortada.</li>
+            <li>A imagem precisa estar razoavelmente focada.</li>
+            <li>Evite sombra forte ou reflexo.</li>
+            <li>O cartão deve estar minimamente plano.</li>
+          </ul>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Prova <span className="text-red-500">*</span>
@@ -188,7 +201,7 @@ export default function ScanForm({ exams }: { exams: Exam[] }) {
                 <p className="text-sm text-slate-500">
                   Arraste a imagem aqui ou <span className="text-indigo-600 font-medium">clique para selecionar</span>
                 </p>
-                <p className="text-xs text-slate-400">JPG, PNG ou WEBP</p>
+                <p className="text-xs text-slate-400">JPG, PNG, WEBP, HEIC ou HEIF</p>
               </div>
             )}
           </div>
@@ -199,7 +212,7 @@ export default function ScanForm({ exams }: { exams: Exam[] }) {
             ref={fileInputRef}
             type="file"
             name="image"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             className="hidden"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
