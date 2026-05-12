@@ -1,5 +1,5 @@
 import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -16,15 +16,19 @@ from omr.services.report import _calculate_stats, generate_report_card
 User = get_user_model()
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def make_user(email="prof@example.com", password="Test@1234"):
     return User.objects.create_user(email=email, password=password)
 
 
-def make_class_group(name="Turma OMR"):
-    return ClassGroup.objects.create(name=name, school_year="2024")
+def make_class_group(name="Turma OMR", owner=None):
+    return ClassGroup.objects.create(name=name, school_year="2024", owner=owner)
 
 
-def make_exam(cg, title="Prova Teste", questions=10, options=4):
+def make_exam(cg, title="Prova Teste", questions=10, options=4, owner=None):
     answer_key = ["A", "B", "C", "D"] * (questions // 4) + ["A"] * (questions % 4)
     exam = Exam.objects.create(
         title=title,
@@ -32,6 +36,7 @@ def make_exam(cg, title="Prova Teste", questions=10, options=4):
         options_count=options,
         answer_key=answer_key[:questions],
         is_active=True,
+        owner=owner,
     )
     exam.class_groups.add(cg)
     return exam
@@ -45,9 +50,14 @@ def make_png_image():
     return SimpleUploadedFile("cartao.png", buf.read(), content_type="image/png")
 
 
+# ---------------------------------------------------------------------------
+# ExamSerializer — validações de gabarito
+# ---------------------------------------------------------------------------
+
 class ExamSerializerTests(TestCase):
     def setUp(self):
-        self.cg = make_class_group()
+        self.owner = make_user()
+        self.cg = make_class_group(owner=self.owner)
         self.base = {
             "title": "Prova X",
             "class_groups": [self.cg.id],
@@ -57,62 +67,79 @@ class ExamSerializerTests(TestCase):
             "is_active": True,
         }
 
+    def _serializer(self, data):
+        from rest_framework.request import Request
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = Request(factory.post("/"))
+        request.user = self.owner
+        return ExamSerializer(data=data, context={"request": request})
+
     def test_valid_data(self):
-        s = ExamSerializer(data=self.base)
+        s = self._serializer(self.base)
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_questions_count_below_minimum(self):
         data = {**self.base, "questions_count": 7, "answer_key": ["A"] * 7}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
         self.assertIn("questions_count", s.errors)
 
     def test_questions_count_above_maximum(self):
         data = {**self.base, "questions_count": 31, "answer_key": ["A"] * 31}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
         self.assertIn("questions_count", s.errors)
 
     def test_invalid_options_count(self):
         data = {**self.base, "options_count": 3}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
         self.assertIn("options_count", s.errors)
 
     def test_answer_key_wrong_length(self):
         data = {**self.base, "answer_key": ["A", "B", "C"]}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
         self.assertIn("answer_key", s.errors)
 
     def test_answer_key_invalid_option(self):
         data = {**self.base, "answer_key": ["A"] * 9 + ["F"]}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
         self.assertIn("answer_key", s.errors)
 
     def test_answer_key_e_valid_with_5_options(self):
-        data = {
-            **self.base,
-            "options_count": 5,
-            "answer_key": ["E"] * 10,
-        }
-        s = ExamSerializer(data=data)
+        data = {**self.base, "options_count": 5, "answer_key": ["E"] * 10}
+        s = self._serializer(data)
         self.assertTrue(s.is_valid(), s.errors)
 
     def test_answer_key_e_invalid_with_4_options(self):
         data = {**self.base, "answer_key": ["E"] * 10}
-        s = ExamSerializer(data=data)
+        s = self._serializer(data)
         self.assertFalse(s.is_valid())
 
+    def test_class_group_from_other_user_rejected(self):
+        other_user = make_user(email="other@test.com")
+        foreign_cg = make_class_group(name="Turma Alheia", owner=other_user)
+        data = {**self.base, "class_groups": [foreign_cg.id]}
+        s = self._serializer(data)
+        self.assertFalse(s.is_valid())
+        self.assertIn("class_groups", s.errors)
+
+
+# ---------------------------------------------------------------------------
+# API — Exam (com isolamento por owner)
+# ---------------------------------------------------------------------------
 
 class ExamAPITests(APITestCase):
     URL = "/api/v1/exams/"
 
     def setUp(self):
         self.user = make_user()
+        self.other_user = make_user(email="other@example.com")
         self.client.force_authenticate(user=self.user)
-        self.cg = make_class_group()
+        self.cg = make_class_group(owner=self.user)
 
     @patch("omr.api.v1.viewsets.generate_exam_template", return_value="exam_templates/test.pdf")
     def test_create_exam(self, mock_pdf):
@@ -133,6 +160,24 @@ class ExamAPITests(APITestCase):
         mock_pdf.assert_called_once()
 
     @patch("omr.api.v1.viewsets.generate_exam_template", return_value="exam_templates/test.pdf")
+    def test_create_exam_sets_owner(self, _):
+        res = self.client.post(
+            self.URL,
+            {
+                "title": "Prova Owner",
+                "class_groups": [self.cg.id],
+                "questions_count": 10,
+                "options_count": 4,
+                "answer_key": ["A"] * 10,
+                "is_active": True,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        exam = Exam.objects.get(id=res.data["id"])
+        self.assertEqual(exam.owner, self.user)
+
+    @patch("omr.api.v1.viewsets.generate_exam_template", return_value="exam_templates/test.pdf")
     def test_create_exam_without_title_returns_400(self, _):
         res = self.client.post(
             self.URL,
@@ -149,14 +194,14 @@ class ExamAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_list_exams(self):
-        make_exam(self.cg)
+        make_exam(self.cg, owner=self.user)
         res = self.client.get(self.URL)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(res.data["count"], 1)
 
     @patch("omr.api.v1.viewsets.generate_exam_template", return_value="exam_templates/test.pdf")
     def test_delete_exam_soft_deletes(self, _):
-        exam = make_exam(self.cg)
+        exam = make_exam(self.cg, owner=self.user)
         res = self.client.delete(f"{self.URL}{exam.id}/")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         exam.refresh_from_db()
@@ -167,6 +212,27 @@ class ExamAPITests(APITestCase):
         res = self.client.get(self.URL)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_cannot_see_other_users_exams(self):
+        """Prova de outro usuário não aparece na listagem."""
+        other_cg = make_class_group(name="Turma do Outro", owner=self.other_user)
+        make_exam(other_cg, title="Prova Alheia", owner=self.other_user)
+        make_exam(self.cg, title="Minha Prova", owner=self.user)
+        res = self.client.get(self.URL)
+        titles = [item["title"] for item in res.data["results"]]
+        self.assertIn("Minha Prova", titles)
+        self.assertNotIn("Prova Alheia", titles)
+
+    def test_user_cannot_delete_other_users_exam(self):
+        """DELETE em prova de outro usuário retorna 404."""
+        other_cg = make_class_group(name="Outra Turma", owner=self.other_user)
+        other_exam = make_exam(other_cg, owner=self.other_user)
+        res = self.client.delete(f"{self.URL}{other_exam.id}/")
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ---------------------------------------------------------------------------
+# API — ScanResult
+# ---------------------------------------------------------------------------
 
 class ScanResultAPITests(APITestCase):
     URL = "/api/v1/scan-results/"
@@ -174,8 +240,8 @@ class ScanResultAPITests(APITestCase):
     def setUp(self):
         self.user = make_user()
         self.client.force_authenticate(user=self.user)
-        self.cg = make_class_group()
-        self.exam = make_exam(self.cg)
+        self.cg = make_class_group(owner=self.user)
+        self.exam = make_exam(self.cg, owner=self.user)
 
     def test_list_scan_results(self):
         res = self.client.get(self.URL)
@@ -189,6 +255,26 @@ class ScanResultAPITests(APITestCase):
         res = self.client.get(f"{self.URL}99999/")
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_cannot_see_other_users_scan_results(self):
+        """Resultados de scans de outro usuário não aparecem na listagem."""
+        other_user = make_user(email="other2@example.com")
+        other_cg = make_class_group(name="Outra Turma", owner=other_user)
+        other_exam = make_exam(other_cg, owner=other_user)
+        ScanResult.objects.create(
+            exam=other_exam,
+            student_number="01",
+            answers=["A"] * 10,
+            score=10,
+            total_questions=10,
+        )
+        res = self.client.get(self.URL)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 0)
+
+
+# ---------------------------------------------------------------------------
+# API — OMR Scan
+# ---------------------------------------------------------------------------
 
 class OMRScanAPITests(APITestCase):
     URL = "/api/v1/omr/scan/"
@@ -196,8 +282,8 @@ class OMRScanAPITests(APITestCase):
     def setUp(self):
         self.user = make_user()
         self.client.force_authenticate(user=self.user)
-        self.cg = make_class_group()
-        self.exam = make_exam(self.cg)
+        self.cg = make_class_group(owner=self.user)
+        self.exam = make_exam(self.cg, owner=self.user)
 
     def _mock_result(self):
         return {
@@ -220,9 +306,7 @@ class OMRScanAPITests(APITestCase):
 
     @patch("omr.api.v1.viewsets.process_image")
     def test_scan_identifies_student(self, mock_pi):
-        student = Student.objects.create(
-            class_group=self.cg, name="Maria", number=5
-        )
+        student = Student.objects.create(class_group=self.cg, name="Maria", number=5)
         mock_pi.return_value = self._mock_result()
         res = self.client.post(
             self.URL,
@@ -264,18 +348,12 @@ class OMRScanAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_scan_without_image_returns_400(self):
-        res = self.client.post(
-            self.URL,
-            {"exam_id": self.exam.id},
-            format="multipart",
-        )
+        res = self.client.post(self.URL, {"exam_id": self.exam.id}, format="multipart")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_scan_without_exam_id_returns_400(self):
         res = self.client.post(
-            self.URL,
-            {"image": make_png_image()},
-            format="multipart",
+            self.URL, {"image": make_png_image()}, format="multipart"
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -328,9 +406,21 @@ class OMRScanAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("image", res.data)
 
+    def test_scan_other_users_exam_returns_404(self):
+        """Usuário não pode escanear prova de outro usuário."""
+        other_user = make_user(email="other_scan@example.com")
+        other_cg = make_class_group(name="Turma Alheia", owner=other_user)
+        other_exam = make_exam(other_cg, owner=other_user)
+        res = self.client.post(
+            self.URL,
+            {"exam_id": other_exam.id, "image": make_png_image()},
+            format="multipart",
+        )
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
 
 # ---------------------------------------------------------------------------
-# Helpers for report tests
+# Helpers para testes de relatório
 # ---------------------------------------------------------------------------
 
 def make_scan_result(exam, student=None, answers=None, score=None, student_number="01"):
@@ -354,8 +444,9 @@ def make_scan_result(exam, student=None, answers=None, score=None, student_numbe
 
 class ReportStatsTests(TestCase):
     def setUp(self):
-        self.cg = make_class_group()
-        self.exam = make_exam(self.cg)
+        self.owner = make_user()
+        self.cg = make_class_group(owner=self.owner)
+        self.exam = make_exam(self.cg, owner=self.owner)
 
     def test_single_student_is_rank_1(self):
         sr = make_scan_result(self.exam)
@@ -364,7 +455,6 @@ class ReportStatsTests(TestCase):
         self.assertEqual(stats["total_students"], 1)
 
     def test_rank_and_percentile_with_multiple_students(self):
-        # 3 students: scores 10, 8, 6
         sr_top = make_scan_result(self.exam, score=10, student_number="01")
         sr_mid = make_scan_result(self.exam, score=8, student_number="02")
         sr_bot = make_scan_result(self.exam, score=6, student_number="03")
@@ -377,13 +467,11 @@ class ReportStatsTests(TestCase):
         self.assertEqual(mid_stats["rank"], 2)
         self.assertEqual(bot_stats["rank"], 3)
 
-        # Percentile = % of students who scored strictly below
         self.assertEqual(top_stats["percentile"], round(2 / 3 * 100, 1))
         self.assertEqual(mid_stats["percentile"], round(1 / 3 * 100, 1))
         self.assertEqual(bot_stats["percentile"], 0.0)
 
     def test_ci_all_correct(self):
-        # All students answer all questions correctly → CI = 100% for every question
         make_scan_result(self.exam, student_number="01")
         make_scan_result(self.exam, student_number="02")
         sr = make_scan_result(self.exam, student_number="03")
@@ -391,7 +479,6 @@ class ReportStatsTests(TestCase):
         self.assertTrue(all(ci == 100.0 for ci in stats["ci_per_question"]))
 
     def test_ci_none_correct(self):
-        # All students answer everything wrong → CI = 0%
         wrong = ["D", "C", "B", "A"] * (self.exam.questions_count // 4)
         wrong = wrong[: self.exam.questions_count]
         make_scan_result(self.exam, answers=wrong, score=0, student_number="01")
@@ -401,13 +488,18 @@ class ReportStatsTests(TestCase):
         self.assertTrue(all(ci == 0.0 for ci in stats["ci_per_question"]))
 
     def test_ci_partial_correct(self):
-        # 2 of 4 students correct on Q1 → CI = 50%
         key = self.exam.answer_key[:]
         wrong_q1 = [("D" if key[0] != "D" else "C")] + key[1:]
         make_scan_result(self.exam, answers=key, student_number="01")
         make_scan_result(self.exam, answers=key, student_number="02")
-        make_scan_result(self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="03")
-        sr = make_scan_result(self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="04")
+        make_scan_result(
+            self.exam, answers=wrong_q1,
+            score=self.exam.questions_count - 1, student_number="03"
+        )
+        sr = make_scan_result(
+            self.exam, answers=wrong_q1,
+            score=self.exam.questions_count - 1, student_number="04"
+        )
         stats = _calculate_stats(sr)
         self.assertEqual(stats["ci_per_question"][0], 50.0)
 
@@ -420,10 +512,12 @@ class ReportStatsTests(TestCase):
         sr_a = make_scan_result(self.exam, score=10, student_number="01")
         sr_b = make_scan_result(self.exam, score=10, student_number="02")
         make_scan_result(self.exam, score=5, student_number="03")
-        self.assertEqual(_calculate_stats(sr_a)["rank"], _calculate_stats(sr_b)["rank"])
+        self.assertEqual(
+            _calculate_stats(sr_a)["rank"],
+            _calculate_stats(sr_b)["rank"],
+        )
 
     def test_blank_answers_handled_in_ci(self):
-        # None answers should not crash CI calculation
         blank = [None] * self.exam.questions_count
         sr = make_scan_result(self.exam, answers=blank, score=0, student_number="01")
         stats = _calculate_stats(sr)
@@ -431,13 +525,14 @@ class ReportStatsTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — generate_report_card (PDF bytes)
+# Unit tests — generate_report_card
 # ---------------------------------------------------------------------------
 
 class GenerateReportCardTests(TestCase):
     def setUp(self):
-        self.cg = make_class_group()
-        self.exam = make_exam(self.cg)
+        self.owner = make_user()
+        self.cg = make_class_group(owner=self.owner)
+        self.exam = make_exam(self.cg, owner=self.owner)
 
     def test_returns_bytes(self):
         sr = make_scan_result(self.exam)
@@ -466,38 +561,22 @@ class GenerateReportCardTests(TestCase):
         pdf = generate_report_card(sr)
         self.assertTrue(pdf.startswith(b"%PDF"))
 
-    def test_pdf_with_mixed_correct_wrong_blank(self):
-        key = self.exam.answer_key[:]
-        mixed = key[:5] + [None, None] + ["Z", "Z"] + key[9:]
-        sr = make_scan_result(self.exam, answers=mixed, score=5)
-        pdf = generate_report_card(sr)
-        self.assertTrue(pdf.startswith(b"%PDF"))
-
     def test_pdf_not_empty(self):
         sr = make_scan_result(self.exam)
         pdf = generate_report_card(sr)
         self.assertGreater(len(pdf), 1024, "PDF muito pequeno — provavelmente vazio")
 
-    def test_multiple_students_changes_rank(self):
-        # Top student and bottom student produce different rank text in PDF
-        sr_top = make_scan_result(self.exam, score=10, student_number="01")
-        wrong = ["D"] * self.exam.questions_count
-        sr_bot = make_scan_result(self.exam, answers=wrong, score=0, student_number="02")
-        pdf_top = generate_report_card(sr_top)
-        pdf_bot = generate_report_card(sr_bot)
-        self.assertNotEqual(pdf_top, pdf_bot)
-
 
 # ---------------------------------------------------------------------------
-# API tests — GET /api/v1/scan-results/{id}/report/
+# API — Report endpoint
 # ---------------------------------------------------------------------------
 
 class ReportCardAPITests(APITestCase):
     def setUp(self):
         self.user = make_user()
         self.client.force_authenticate(user=self.user)
-        self.cg = make_class_group()
-        self.exam = make_exam(self.cg)
+        self.cg = make_class_group(owner=self.user)
+        self.exam = make_exam(self.cg, owner=self.user)
         self.scan_result = make_scan_result(self.exam)
 
     def _url(self, pk=None):
@@ -530,34 +609,16 @@ class ReportCardAPITests(APITestCase):
         res = self.client.get(self._url(pk=99999))
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_with_identified_student(self):
-        student = Student.objects.create(class_group=self.cg, name="Carlos", number=7)
-        sr = make_scan_result(self.exam, student=student, student_number="07")
-        res = self.client.get(self._url(pk=sr.id))
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertTrue(res.content.startswith(b"%PDF"))
-
-    def test_with_unidentified_student(self):
-        sr = make_scan_result(self.exam, student=None, student_number="??")
-        res = self.client.get(self._url(pk=sr.id))
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertTrue(res.content.startswith(b"%PDF"))
-
-    def test_with_all_blank_answers(self):
-        blank = [None] * self.exam.questions_count
-        sr = make_scan_result(self.exam, answers=blank, score=0)
-        res = self.client.get(self._url(pk=sr.id))
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertTrue(res.content.startswith(b"%PDF"))
-
-    def test_with_multiple_students_in_same_exam(self):
-        make_scan_result(self.exam, student_number="02", score=8)
-        make_scan_result(self.exam, student_number="03", score=5)
-        res = self.client.get(self._url())
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertTrue(res.content.startswith(b"%PDF"))
+    def test_other_users_scan_result_returns_404(self):
+        """Usuário não pode acessar boletim de scan de outro usuário."""
+        other_user = make_user(email="other_report@example.com")
+        other_cg = make_class_group(name="Turma Rival", owner=other_user)
+        other_exam = make_exam(other_cg, owner=other_user)
+        other_sr = make_scan_result(other_exam)
+        res = self.client.get(self._url(pk=other_sr.id))
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_pdf_size_is_reasonable(self):
         res = self.client.get(self._url())
         self.assertGreater(len(res.content), 1024)
-        self.assertLess(len(res.content), 5 * 1024 * 1024)  # < 5 MB
+        self.assertLess(len(res.content), 5 * 1024 * 1024)

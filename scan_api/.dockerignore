@@ -1,26 +1,47 @@
-venv
-__pycache__
+# Controle de versão
+.git/
+.gitignore
+
+# Secrets — nunca entrar na imagem Docker
+.env
+.envs/local/.env.local
+.envs/production/.env.production
+
+# Python cache
+venv/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache
-.git
-.gitignore
-.env
-*.env
-.env.*
-!.env*.example
-.envs/**
-!.envs/
-!.envs/local/
-!.envs/production/
-!.envs/**/*.example
+*.egg-info/
+dist/
+build/
+
+# Testes e cobertura
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Django artefatos locais
 db.sqlite3
-media
-staticfiles
-debug_resultado.jpg
-debug_threshold.jpg
-debug_*.jpg
+media/
+staticfiles/
 gunicorn.ctl
-dist
-build
+
+# Debug images do pipeline OMR
+debug_*.jpg
+debug_*.jpeg
+debug_*.png
+
+# IDEs e OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker configs (não precisam estar dentro da imagem)
+docker/
+
+# Docs
+README.md

@@ -8,22 +8,33 @@ from core.models import ClassGroup, Student
 User = get_user_model()
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def make_user(email="prof@example.com", password="Test@1234"):
     return User.objects.create_user(email=email, password=password)
 
 
-def make_class_group(name="Turma A", school_year="2024"):
-    return ClassGroup.objects.create(name=name, school_year=school_year)
+def make_class_group(name="Turma A", school_year="2024", owner=None):
+    return ClassGroup.objects.create(name=name, school_year=school_year, owner=owner)
 
+
+# ---------------------------------------------------------------------------
+# Model — ClassGroup
+# ---------------------------------------------------------------------------
 
 class ClassGroupModelTests(TestCase):
+    def setUp(self):
+        self.owner = make_user()
+
     def test_create_class_group(self):
-        cg = make_class_group()
+        cg = make_class_group(owner=self.owner)
         self.assertEqual(str(cg), "Turma A")
         self.assertFalse(cg.is_deleted)
 
     def test_soft_delete(self):
-        cg = make_class_group()
+        cg = make_class_group(owner=self.owner)
         cg.delete()
         self.assertTrue(cg.is_deleted)
         self.assertIsNotNone(cg.deleted_at)
@@ -31,7 +42,7 @@ class ClassGroupModelTests(TestCase):
         self.assertFalse(ClassGroup.active.filter(id=cg.id).exists())
 
     def test_restore(self):
-        cg = make_class_group()
+        cg = make_class_group(owner=self.owner)
         cg.delete()
         cg.restore()
         self.assertFalse(cg.is_deleted)
@@ -39,40 +50,37 @@ class ClassGroupModelTests(TestCase):
         self.assertTrue(ClassGroup.active.filter(id=cg.id).exists())
 
     def test_active_manager_excludes_deleted(self):
-        cg1 = make_class_group(name="Ativa")
-        cg2 = make_class_group(name="Deletada")
+        cg1 = make_class_group(name="Ativa", owner=self.owner)
+        cg2 = make_class_group(name="Deletada", owner=self.owner)
         cg2.delete()
         active = list(ClassGroup.active.values_list("name", flat=True))
         self.assertIn("Ativa", active)
         self.assertNotIn("Deletada", active)
 
 
+# ---------------------------------------------------------------------------
+# Model — Student
+# ---------------------------------------------------------------------------
+
 class StudentModelTests(TestCase):
     def setUp(self):
-        self.cg = make_class_group()
+        self.owner = make_user()
+        self.cg = make_class_group(owner=self.owner)
 
     def test_create_student(self):
-        s = Student.objects.create(
-            class_group=self.cg, name="Aluno 1", number=1
-        )
+        s = Student.objects.create(class_group=self.cg, name="Aluno 1", number=1)
         self.assertEqual(str(s), "01 - Aluno 1")
 
     def test_soft_delete_student(self):
-        s = Student.objects.create(
-            class_group=self.cg, name="Aluno 2", number=2
-        )
+        s = Student.objects.create(class_group=self.cg, name="Aluno 2", number=2)
         s.delete()
         self.assertTrue(s.is_deleted)
         self.assertFalse(Student.active.filter(id=s.id).exists())
 
     def test_allows_same_number_after_soft_delete(self):
-        s1 = Student.objects.create(
-            class_group=self.cg, name="Aluno 3", number=3
-        )
+        s1 = Student.objects.create(class_group=self.cg, name="Aluno 3", number=3)
         s1.delete()
-        s2 = Student.objects.create(
-            class_group=self.cg, name="Aluno 3 Novo", number=3
-        )
+        s2 = Student.objects.create(class_group=self.cg, name="Aluno 3 Novo", number=3)
         self.assertIsNotNone(s2.id)
 
     def test_students_count_excludes_deleted(self):
@@ -83,15 +91,20 @@ class StudentModelTests(TestCase):
         self.assertEqual(count, 1)
 
 
+# ---------------------------------------------------------------------------
+# API — ClassGroup (com isolamento por owner)
+# ---------------------------------------------------------------------------
+
 class ClassGroupAPITests(APITestCase):
     URL = "/api/v1/class-groups/"
 
     def setUp(self):
         self.user = make_user()
+        self.other_user = make_user(email="other@example.com")
         self.client.force_authenticate(user=self.user)
 
     def test_list_class_groups(self):
-        make_class_group(name="Turma B")
+        make_class_group(name="Turma B", owner=self.user)
         res = self.client.get(self.URL)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(res.data["count"], 1)
@@ -106,21 +119,29 @@ class ClassGroupAPITests(APITestCase):
         self.assertEqual(res.data["name"], "Nova Turma")
         self.assertIn("students_count", res.data)
 
-    def test_create_class_group_without_name_returns_400(self):
+    def test_create_sets_owner(self):
         res = self.client.post(
-            self.URL, {"name": "", "is_active": True}, format="json"
+            self.URL,
+            {"name": "Turma Owner", "school_year": "2024", "is_active": True},
+            format="json",
         )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        cg = ClassGroup.objects.get(id=res.data["id"])
+        self.assertEqual(cg.owner, self.user)
+
+    def test_create_class_group_without_name_returns_400(self):
+        res = self.client.post(self.URL, {"name": "", "is_active": True}, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_delete_class_group_soft_deletes(self):
-        cg = make_class_group(name="Para Deletar")
+        cg = make_class_group(name="Para Deletar", owner=self.user)
         res = self.client.delete(f"{self.URL}{cg.id}/")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         cg.refresh_from_db()
         self.assertTrue(cg.is_deleted)
 
     def test_deleted_class_group_not_in_list(self):
-        cg = make_class_group(name="Invisível")
+        cg = make_class_group(name="Invisível", owner=self.user)
         cg.delete()
         res = self.client.get(self.URL)
         names = [item["name"] for item in res.data["results"]]
@@ -136,7 +157,7 @@ class ClassGroupAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_students_count_in_list_reflects_active_students(self):
-        cg = make_class_group(name="Turma Contagem")
+        cg = make_class_group(name="Turma Contagem", owner=self.user)
         Student.objects.create(class_group=cg, name="Ativo", number=1)
         deleted = Student.objects.create(class_group=cg, name="Deletado", number=2)
         deleted.delete()
@@ -144,23 +165,46 @@ class ClassGroupAPITests(APITestCase):
         item = next(r for r in res.data["results"] if r["name"] == "Turma Contagem")
         self.assertEqual(item["students_count"], 1)
 
-    def test_students_count_is_zero_on_create(self):
-        res = self.client.post(
-            self.URL,
-            {"name": "Turma Zero", "school_year": "2024", "is_active": True},
+    # ── Isolamento entre usuários ──────────────────────────────────────────
+
+    def test_user_cannot_see_other_users_class_groups(self):
+        """Turma de outro usuário não aparece na listagem."""
+        make_class_group(name="Turma do Outro", owner=self.other_user)
+        make_class_group(name="Minha Turma", owner=self.user)
+        res = self.client.get(self.URL)
+        names = [item["name"] for item in res.data["results"]]
+        self.assertIn("Minha Turma", names)
+        self.assertNotIn("Turma do Outro", names)
+
+    def test_user_cannot_edit_other_users_class_group(self):
+        """PATCH em turma de outro usuário retorna 404 (não expõe existência)."""
+        other_cg = make_class_group(name="Alheia", owner=self.other_user)
+        res = self.client.patch(
+            f"{self.URL}{other_cg.id}/",
+            {"name": "Invadida"},
             format="json",
         )
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(res.data["students_count"], 0)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_cannot_delete_other_users_class_group(self):
+        """DELETE em turma de outro usuário retorna 404."""
+        other_cg = make_class_group(name="Para Roubar", owner=self.other_user)
+        res = self.client.delete(f"{self.URL}{other_cg.id}/")
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ---------------------------------------------------------------------------
+# API — Student
+# ---------------------------------------------------------------------------
 
 class StudentAPITests(APITestCase):
     URL = "/api/v1/students/"
 
     def setUp(self):
         self.user = make_user()
+        self.other_user = make_user(email="other@example.com")
         self.client.force_authenticate(user=self.user)
-        self.cg = make_class_group(name="Turma Alunos")
+        self.cg = make_class_group(name="Turma Alunos", owner=self.user)
 
     def test_create_student(self):
         res = self.client.post(
@@ -205,7 +249,7 @@ class StudentAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_same_number_allowed_in_different_classes(self):
-        cg2 = make_class_group(name="Outra Turma")
+        cg2 = make_class_group(name="Outra Turma", owner=self.user)
         Student.objects.create(class_group=self.cg, name="Aluno A", number=1)
         res = self.client.post(
             self.URL,
@@ -222,10 +266,20 @@ class StudentAPITests(APITestCase):
         self.assertTrue(s.is_deleted)
 
     def test_filter_by_class_group(self):
-        cg2 = make_class_group(name="Turma Filtro")
+        cg2 = make_class_group(name="Turma Filtro", owner=self.user)
         Student.objects.create(class_group=self.cg, name="Da Turma A", number=1)
         Student.objects.create(class_group=cg2, name="Da Turma B", number=1)
         res = self.client.get(f"{self.URL}?class_group={self.cg.id}")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         for item in res.data["results"]:
             self.assertEqual(item["class_group"], self.cg.id)
+
+    def test_students_of_other_users_class_not_visible(self):
+        """Alunos de turma de outro usuário não aparecem na listagem."""
+        other_cg = make_class_group(name="Turma Rival", owner=self.other_user)
+        Student.objects.create(class_group=other_cg, name="Aluno Rival", number=1)
+        Student.objects.create(class_group=self.cg, name="Meu Aluno", number=2)
+        res = self.client.get(self.URL)
+        names = [item["name"] for item in res.data["results"]]
+        self.assertIn("Meu Aluno", names)
+        self.assertNotIn("Aluno Rival", names)
