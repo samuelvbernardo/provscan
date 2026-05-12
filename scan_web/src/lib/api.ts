@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+// API_URL é usada apenas no servidor (Server Actions e Route Handlers).
+// Não usar NEXT_PUBLIC_ para não expor o endereço interno do backend no bundle do cliente.
+const API_URL = process.env.API_URL ?? 'http://localhost:8000'
 
 async function refreshAccessToken(refreshToken: string): Promise<string | null> {
   try {

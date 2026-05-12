@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -29,6 +30,9 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=["is_deleted"]),
+        ]
 
     def delete(self, using=None, keep_parents=False):
         self.is_deleted = True
@@ -46,11 +50,23 @@ class ClassGroup(BaseModel):
         verbose_name = _("Turma")
         verbose_name_plural = _("Turmas")
         ordering = ["name"]
+        indexes = [
+            models.Index(fields=["owner", "is_deleted"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="class_groups",
+        verbose_name=_("Proprietário"),
+        null=True,
+        blank=True,
+    )
 
     name = models.CharField(
         _("Nome da turma"),
         max_length=100,
-        unique=True,
         help_text=_("Exemplo: 5º Ano A, 9º Ano B, 1ª Série C."),
     )
 
@@ -76,6 +92,10 @@ class Student(BaseModel):
         verbose_name = _("Aluno")
         verbose_name_plural = _("Alunos")
         ordering = ["class_group", "number", "name"]
+        indexes = [
+            models.Index(fields=["class_group", "number", "is_deleted"]),
+            models.Index(fields=["is_active"]),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["class_group", "number"],

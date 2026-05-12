@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import logging
 import os
 import warnings
 import environ
@@ -183,3 +184,97 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "accounts.User"
+
+
+# ---------------------------------------------------------------------------
+# Logging estruturado
+# ---------------------------------------------------------------------------
+
+try:
+    import pythonjsonlogger  # noqa: F401
+    _has_json_logger = True
+except ImportError:
+    _has_json_logger = False
+
+_log_formatter = "json" if (not DEBUG and _has_json_logger) else "verbose"
+
+_formatters: dict = {
+    "verbose": {
+        "format": "[{levelname}] {asctime} {name} {module}:{lineno} — {message}",
+        "style": "{",
+    },
+}
+
+if _has_json_logger:
+    _formatters["json"] = {
+        "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d",
+    }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": _formatters,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": _log_formatter,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "omr": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "accounts": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Sentry — monitoramento de erros em produção (opcional via env var)
+# ---------------------------------------------------------------------------
+
+_sentry_dsn = env("SENTRY_DSN", default="")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[
+            DjangoIntegration(),
+            LoggingIntegration(
+                level=logging.WARNING,
+                event_level=logging.ERROR,
+            ),
+        ],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+        environment="production" if not DEBUG else "development",
+    )

@@ -28,11 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class ExamViewSet(viewsets.ModelViewSet):
-    queryset = Exam.active.all()
     serializer_class = ExamSerializer
 
+    def get_queryset(self):
+        return Exam.active.filter(owner=self.request.user).prefetch_related(
+            "class_groups"
+        )
+
     def perform_create(self, serializer):
-        exam = serializer.save()
+        exam = serializer.save(owner=self.request.user)
         relative_path = generate_exam_template(exam)
         exam.template_file = relative_path
         exam.save(update_fields=["template_file"])
@@ -86,7 +90,7 @@ class ExamViewSet(viewsets.ModelViewSet):
             )
 
         exams = list(
-            Exam.active.filter(id__in=exam_ids)
+            Exam.active.filter(id__in=exam_ids, owner=request.user)
             .prefetch_related("class_groups")
             .order_by("title")
         )
@@ -100,6 +104,7 @@ class ExamViewSet(viewsets.ModelViewSet):
         try:
             pdf_bytes = generate_class_report_pdf(exams)
         except Exception:
+            logger.exception("Falha ao gerar relatório de turma para exams=%s", exam_ids)
             return Response(
                 {"detail": "Não foi possível gerar o relatório."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -111,11 +116,15 @@ class ExamViewSet(viewsets.ModelViewSet):
 
 
 class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = ScanResult.active.select_related(
-        "exam",
-        "student",
-    ).prefetch_related("exam__class_groups").all()
     serializer_class = ScanResultSerializer
+
+    def get_queryset(self):
+        return (
+            ScanResult.active
+            .filter(exam__owner=self.request.user)
+            .select_related("exam", "student")
+            .prefetch_related("exam__class_groups")
+        )
 
     @extend_schema(
         responses={(200, "application/pdf"): bytes},
@@ -127,6 +136,7 @@ class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             pdf_bytes = generate_report_card(scan_result)
         except Exception:
+            logger.exception("Falha ao gerar boletim para scan_result=%s", pk)
             return Response(
                 {"detail": "Não foi possível gerar o boletim."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -145,7 +155,7 @@ class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ScanRateThrottle(UserRateThrottle):
-    scope = 'scan'
+    scope = "scan"
 
 
 class OMRViewSet(viewsets.ViewSet):
@@ -165,7 +175,7 @@ class OMRViewSet(viewsets.ViewSet):
         image = serializer.validated_data["image"]
 
         try:
-            exam = Exam.active.get(id=exam_id, is_active=True)
+            exam = Exam.active.get(id=exam_id, is_active=True, owner=request.user)
         except Exam.DoesNotExist:
             return Response(
                 {"detail": "Prova não encontrada ou inativa."},
@@ -177,7 +187,6 @@ class OMRViewSet(viewsets.ViewSet):
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             for chunk in image.chunks():
                 temp_file.write(chunk)
-
             temp_path = temp_file.name
 
         try:
@@ -188,9 +197,19 @@ class OMRViewSet(viewsets.ViewSet):
                 options_count=exam.options_count,
             )
         except Exception:
-            logger.exception("Falha ao processar imagem OMR para a prova %s", exam.id)
+            logger.exception(
+                "Falha ao processar imagem OMR para a prova %s (user=%s)",
+                exam.id,
+                request.user.id,
+            )
             return Response(
-                {"detail": "Não foi possível processar a imagem. Verifique se os quatro marcadores pretos aparecem na foto, com boa iluminação, foco e sem cortes."},
+                {
+                    "detail": (
+                        "Não foi possível processar a imagem. "
+                        "Verifique se os quatro marcadores pretos aparecem na foto, "
+                        "com boa iluminação, foco e sem cortes."
+                    )
+                },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         finally:

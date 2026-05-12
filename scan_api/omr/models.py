@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -9,6 +10,19 @@ class Exam(BaseModel):
         verbose_name = _("Prova")
         verbose_name_plural = _("Provas")
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["owner", "is_deleted"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="exams",
+        verbose_name=_("Proprietário"),
+        null=True,
+        blank=True,
+    )
 
     title = models.CharField(
         _("Título"),
@@ -69,6 +83,10 @@ class ScanResult(BaseModel):
         verbose_name = _("Resultado da leitura")
         verbose_name_plural = _("Resultados das leituras")
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["exam", "is_deleted"]),
+            models.Index(fields=["student"]),
+        ]
 
     exam = models.ForeignKey(
         Exam,

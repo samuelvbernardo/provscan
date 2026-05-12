@@ -1,50 +1,49 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.log
 *.pot
 *.pyc
+*.egg-info/
+dist/
+build/
+coverage/
+*.coverage
+.coverage
+.pytest_cache/
+htmlcov/
 
-# Django project database and media
+# Django
 /db.sqlite3
 /db.sqlite3-journal
 /media/
+/staticfiles/
+/gunicorn.ctl
 
-# Imagens de teste e debug do OMR
-omr/*.jpg
-omr/*.jpeg
-omr/*.png
+# Debug images geradas pelo pipeline OMR
+/debug_*.jpg
+/debug_*.jpeg
+/debug_*.png
 
-# Environments / Secrets
+# Envs/Secrets — nunca versionar arquivos reais, apenas .example
 .env
-*.env
 .env.*
 !.env*.example
+*.env
 .envs/**
 !.envs/
 !.envs/local/
 !.envs/production/
 !.envs/**/*.example
+
+# Virtualenvs
 .venv/
 venv/
 ENV/
 env/
-env.bak/
-venv.bak/
-/.env
-//.env
-/staticfiles
-/debug_*.jpg
-/gunicorn.ctl
 
-# Build / coverage / eggs
-dist/
-build/
-coverage/
-*.coverage
-*.egg-info/
-
-# IDE / Editor
+# IDEs
 .vscode/
 .idea/
 *.iml

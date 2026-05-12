@@ -13,8 +13,6 @@ def register_heif_opener():
 
 
 def load_image_for_omr(path):
-    register_heif_opener()
-
     try:
         with Image.open(path) as img:
             img = ImageOps.exif_transpose(img)

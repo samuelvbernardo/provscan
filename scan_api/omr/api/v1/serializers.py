@@ -3,11 +3,6 @@ from drf_spectacular.utils import extend_schema_field
 
 from core.models import ClassGroup
 from omr.models import Exam, ScanResult
-from omr.services.image_io import register_heif_opener
-
-
-register_heif_opener()
-
 
 class ExamSerializer(serializers.ModelSerializer):
     class_groups = serializers.PrimaryKeyRelatedField(
@@ -56,6 +51,16 @@ class ExamSerializer(serializers.ModelSerializer):
         if class_groups is not None:
             exam.class_groups.set(class_groups)
         return exam
+
+    def validate_class_groups(self, value):
+        request = self.context.get("request")
+        if request and value:
+            foreign_groups = [cg for cg in value if cg.owner_id != request.user.id]
+            if foreign_groups:
+                raise serializers.ValidationError(
+                    "Uma ou mais turmas não pertencem ao usuário autenticado."
+                )
+        return value
 
     def validate_questions_count(self, value):
         if value < 8 or value > 30:
