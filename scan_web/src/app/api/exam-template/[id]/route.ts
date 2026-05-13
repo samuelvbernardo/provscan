@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+const API_URL = (process.env.API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
 export async function GET(
   _request: NextRequest,

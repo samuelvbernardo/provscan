@@ -1,23 +1,30 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-// API_URL é usada apenas no servidor (Server Actions e Route Handlers).
-// Não usar NEXT_PUBLIC_ para não expor o endereço interno do backend no bundle do cliente.
-const API_URL = process.env.API_URL ?? 'http://localhost:8000'
+// API_URL is used only on the server: Server Components, Server Actions, and Route Handlers.
+const API_URL = (process.env.API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+
+async function backendFetch(path: string, options?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${API_URL}${path}`, options)
+  } catch (error) {
+    console.error('Backend request failed', error)
+    return Response.json(
+      { detail: 'Nao foi possivel conectar ao servidor.' },
+      { status: 503 }
+    )
+  }
+}
 
 async function refreshAccessToken(refreshToken: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh: refreshToken }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.access ?? null
-  } catch {
-    return null
-  }
+  const res = await backendFetch('/api/token/refresh/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh: refreshToken }),
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.access ?? null
 }
 
 export async function apiFetch(path: string, options?: RequestInit) {
@@ -33,23 +40,15 @@ export async function apiFetch(path: string, options?: RequestInit) {
     ...(options?.headers as Record<string, string>),
   })
 
-  let res = await fetch(`${API_URL}${path}`, { ...options, headers: buildHeaders(token) })
+  let res = await backendFetch(path, { ...options, headers: buildHeaders(token) })
 
   if (res.status === 401 && refreshToken) {
     const newToken = await refreshAccessToken(refreshToken)
     if (newToken) {
-      cookieStore.set('access_token', newToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60,
-      })
       token = newToken
-      res = await fetch(`${API_URL}${path}`, { ...options, headers: buildHeaders(token) })
+      res = await backendFetch(path, { ...options, headers: buildHeaders(token) })
     } else {
-      cookieStore.delete('access_token')
-      cookieStore.delete('refresh_token')
-      redirect('/login')
+      redirect('/login?expired=1')
     }
   }
 
