@@ -9,8 +9,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core.models import ClassGroup, Student
-from omr.models import Exam, ScanResult
 from omr.api.v1.serializers import ExamSerializer
+from omr.models import Exam, ScanResult
 from omr.services.report import _calculate_stats, generate_report_card
 
 User = get_user_model()
@@ -19,6 +19,7 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_user(email="prof@example.com", password="Test@1234"):
     return User.objects.create_user(email=email, password=password)
@@ -54,6 +55,7 @@ def make_png_image():
 # ExamSerializer — validações de gabarito
 # ---------------------------------------------------------------------------
 
+
 class ExamSerializerTests(TestCase):
     def setUp(self):
         self.owner = make_user()
@@ -70,6 +72,7 @@ class ExamSerializerTests(TestCase):
     def _serializer(self, data):
         from rest_framework.request import Request
         from rest_framework.test import APIRequestFactory
+
         factory = APIRequestFactory()
         request = Request(factory.post("/"))
         request.user = self.owner
@@ -131,6 +134,7 @@ class ExamSerializerTests(TestCase):
 # ---------------------------------------------------------------------------
 # API — Exam (com isolamento por owner)
 # ---------------------------------------------------------------------------
+
 
 class ExamAPITests(APITestCase):
     URL = "/api/v1/exams/"
@@ -234,6 +238,7 @@ class ExamAPITests(APITestCase):
 # API — ScanResult
 # ---------------------------------------------------------------------------
 
+
 class ScanResultAPITests(APITestCase):
     URL = "/api/v1/scan-results/"
 
@@ -276,6 +281,7 @@ class ScanResultAPITests(APITestCase):
 # API — OMR Scan
 # ---------------------------------------------------------------------------
 
+
 class OMRScanAPITests(APITestCase):
     URL = "/api/v1/omr/scan/"
 
@@ -306,7 +312,7 @@ class OMRScanAPITests(APITestCase):
 
     @patch("omr.api.v1.viewsets.process_image")
     def test_scan_identifies_student(self, mock_pi):
-        student = Student.objects.create(class_group=self.cg, name="Maria", number=5)
+        Student.objects.create(class_group=self.cg, name="Maria", number=5)
         mock_pi.return_value = self._mock_result()
         res = self.client.post(
             self.URL,
@@ -352,9 +358,7 @@ class OMRScanAPITests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_scan_without_exam_id_returns_400(self):
-        res = self.client.post(
-            self.URL, {"image": make_png_image()}, format="multipart"
-        )
+        res = self.client.post(self.URL, {"image": make_png_image()}, format="multipart")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_scan_unauthenticated_returns_401(self):
@@ -423,11 +427,12 @@ class OMRScanAPITests(APITestCase):
 # Helpers para testes de relatório
 # ---------------------------------------------------------------------------
 
+
 def make_scan_result(exam, student=None, answers=None, score=None, student_number="01"):
     if answers is None:
         answers = exam.answer_key[:]
     if score is None:
-        score = sum(1 for a, k in zip(answers, exam.answer_key) if a == k)
+        score = sum(1 for a, k in zip(answers, exam.answer_key, strict=False) if a == k)
     return ScanResult.objects.create(
         exam=exam,
         student=student,
@@ -441,6 +446,7 @@ def make_scan_result(exam, student=None, answers=None, score=None, student_numbe
 # ---------------------------------------------------------------------------
 # Unit tests — _calculate_stats
 # ---------------------------------------------------------------------------
+
 
 class ReportStatsTests(TestCase):
     def setUp(self):
@@ -493,12 +499,10 @@ class ReportStatsTests(TestCase):
         make_scan_result(self.exam, answers=key, student_number="01")
         make_scan_result(self.exam, answers=key, student_number="02")
         make_scan_result(
-            self.exam, answers=wrong_q1,
-            score=self.exam.questions_count - 1, student_number="03"
+            self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="03"
         )
         sr = make_scan_result(
-            self.exam, answers=wrong_q1,
-            score=self.exam.questions_count - 1, student_number="04"
+            self.exam, answers=wrong_q1, score=self.exam.questions_count - 1, student_number="04"
         )
         stats = _calculate_stats(sr)
         self.assertEqual(stats["ci_per_question"][0], 50.0)
@@ -527,6 +531,7 @@ class ReportStatsTests(TestCase):
 # ---------------------------------------------------------------------------
 # Unit tests — generate_report_card
 # ---------------------------------------------------------------------------
+
 
 class GenerateReportCardTests(TestCase):
     def setUp(self):
@@ -570,6 +575,7 @@ class GenerateReportCardTests(TestCase):
 # ---------------------------------------------------------------------------
 # API — Report endpoint
 # ---------------------------------------------------------------------------
+
 
 class ReportCardAPITests(APITestCase):
     def setUp(self):

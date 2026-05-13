@@ -5,51 +5,102 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='ClassGroup',
+            name="ClassGroup",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name='Excluído')),
-                ('deleted_at', models.DateTimeField(blank=True, null=True, verbose_name='Excluído em')),
-                ('name', models.CharField(help_text='Exemplo: 5º Ano A, 9º Ano B, 1ª Série C.', max_length=100, unique=True, verbose_name='Nome da turma')),
-                ('school_year', models.CharField(blank=True, help_text='Exemplo: 5º ano, 9º ano, 1ª série.', max_length=50, null=True, verbose_name='Ano/Série')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Ativa')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Criado em")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Atualizado em")),
+                ("is_deleted", models.BooleanField(default=False, verbose_name="Excluído")),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, null=True, verbose_name="Excluído em"),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Exemplo: 5º Ano A, 9º Ano B, 1ª Série C.",
+                        max_length=100,
+                        unique=True,
+                        verbose_name="Nome da turma",
+                    ),
+                ),
+                (
+                    "school_year",
+                    models.CharField(
+                        blank=True,
+                        help_text="Exemplo: 5º ano, 9º ano, 1ª série.",
+                        max_length=50,
+                        null=True,
+                        verbose_name="Ano/Série",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True, verbose_name="Ativa")),
             ],
             options={
-                'verbose_name': 'Turma',
-                'verbose_name_plural': 'Turmas',
-                'ordering': ['name'],
-                'abstract': False,
+                "verbose_name": "Turma",
+                "verbose_name_plural": "Turmas",
+                "ordering": ["name"],
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='Student',
+            name="Student",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name='Excluído')),
-                ('deleted_at', models.DateTimeField(blank=True, null=True, verbose_name='Excluído em')),
-                ('name', models.CharField(max_length=150, verbose_name='Nome do aluno')),
-                ('number', models.PositiveIntegerField(help_text='Número usado no gabarito. Exemplo: 1, 2, 25.', verbose_name='Número do aluno')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Ativo')),
-                ('class_group', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='students', to='core.classgroup', verbose_name='Turma')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Criado em")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Atualizado em")),
+                ("is_deleted", models.BooleanField(default=False, verbose_name="Excluído")),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, null=True, verbose_name="Excluído em"),
+                ),
+                ("name", models.CharField(max_length=150, verbose_name="Nome do aluno")),
+                (
+                    "number",
+                    models.PositiveIntegerField(
+                        help_text="Número usado no gabarito. Exemplo: 1, 2, 25.",
+                        verbose_name="Número do aluno",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True, verbose_name="Ativo")),
+                (
+                    "class_group",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="students",
+                        to="core.classgroup",
+                        verbose_name="Turma",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Aluno',
-                'verbose_name_plural': 'Alunos',
-                'ordering': ['class_group', 'number', 'name'],
-                'abstract': False,
-                'constraints': [models.UniqueConstraint(condition=models.Q(('is_deleted', False)), fields=('class_group', 'number'), name='unique_active_student_number_per_class')],
+                "verbose_name": "Aluno",
+                "verbose_name_plural": "Alunos",
+                "ordering": ["class_group", "number", "name"],
+                "abstract": False,
+                "constraints": [
+                    models.UniqueConstraint(
+                        condition=models.Q(("is_deleted", False)),
+                        fields=("class_group", "number"),
+                        name="unique_active_student_number_per_class",
+                    )
+                ],
             },
         ),
     ]

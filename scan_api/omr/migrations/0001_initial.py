@@ -5,53 +5,91 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Exam',
+            name="Exam",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name='Excluído')),
-                ('deleted_at', models.DateTimeField(blank=True, null=True, verbose_name='Excluído em')),
-                ('title', models.CharField(max_length=150, verbose_name='Título')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Descrição')),
-                ('answer_key', models.JSONField(help_text="Lista de respostas corretas. Exemplo: ['A', 'B', 'C'].", verbose_name='Gabarito')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Ativa')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Criado em")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Atualizado em")),
+                ("is_deleted", models.BooleanField(default=False, verbose_name="Excluído")),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, null=True, verbose_name="Excluído em"),
+                ),
+                ("title", models.CharField(max_length=150, verbose_name="Título")),
+                ("description", models.TextField(blank=True, null=True, verbose_name="Descrição")),
+                (
+                    "answer_key",
+                    models.JSONField(
+                        help_text="Lista de respostas corretas. Exemplo: ['A', 'B', 'C'].",
+                        verbose_name="Gabarito",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True, verbose_name="Ativa")),
             ],
             options={
-                'verbose_name': 'Prova',
-                'verbose_name_plural': 'Provas',
-                'ordering': ['-created_at'],
-                'abstract': False,
+                "verbose_name": "Prova",
+                "verbose_name_plural": "Provas",
+                "ordering": ["-created_at"],
+                "abstract": False,
             },
         ),
         migrations.CreateModel(
-            name='ScanResult',
+            name="ScanResult",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name='Excluído')),
-                ('deleted_at', models.DateTimeField(blank=True, null=True, verbose_name='Excluído em')),
-                ('student_number', models.CharField(max_length=20, verbose_name='Número do aluno')),
-                ('answers', models.JSONField(help_text='Lista de respostas lidas pelo sistema.', verbose_name='Respostas')),
-                ('score', models.PositiveIntegerField(verbose_name='Nota')),
-                ('total_questions', models.PositiveIntegerField(verbose_name='Total de questões')),
-                ('image', models.ImageField(blank=True, null=True, upload_to='scan_results/', verbose_name='Imagem')),
-                ('exam', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scan_results', to='omr.exam', verbose_name='Prova')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Criado em")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Atualizado em")),
+                ("is_deleted", models.BooleanField(default=False, verbose_name="Excluído")),
+                (
+                    "deleted_at",
+                    models.DateTimeField(blank=True, null=True, verbose_name="Excluído em"),
+                ),
+                ("student_number", models.CharField(max_length=20, verbose_name="Número do aluno")),
+                (
+                    "answers",
+                    models.JSONField(
+                        help_text="Lista de respostas lidas pelo sistema.", verbose_name="Respostas"
+                    ),
+                ),
+                ("score", models.PositiveIntegerField(verbose_name="Nota")),
+                ("total_questions", models.PositiveIntegerField(verbose_name="Total de questões")),
+                (
+                    "image",
+                    models.ImageField(
+                        blank=True, null=True, upload_to="scan_results/", verbose_name="Imagem"
+                    ),
+                ),
+                (
+                    "exam",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="scan_results",
+                        to="omr.exam",
+                        verbose_name="Prova",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Resultado da leitura',
-                'verbose_name_plural': 'Resultados das leituras',
-                'ordering': ['-created_at'],
-                'abstract': False,
+                "verbose_name": "Resultado da leitura",
+                "verbose_name_plural": "Resultados das leituras",
+                "ordering": ["-created_at"],
+                "abstract": False,
             },
         ),
     ]

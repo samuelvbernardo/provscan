@@ -3,7 +3,6 @@ from rest_framework import permissions, viewsets
 
 from accounts.api.v1.serializers import UserCreateSerializer, UserSerializer
 
-
 User = get_user_model()
 
 

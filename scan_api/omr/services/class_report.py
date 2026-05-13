@@ -3,33 +3,33 @@ from datetime import date
 from typing import Any
 
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    KeepTogether,
+    PageBreak,
+    Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
-    Paragraph,
-    Spacer,
-    PageBreak,
-    KeepTogether,
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 from core.models import Student
 from omr.models import Exam, ScanResult
 
-C_HEADER_BG   = colors.HexColor("#f1f5f9")
+C_HEADER_BG = colors.HexColor("#f1f5f9")
 C_HEADER_TEXT = colors.HexColor("#1e293b")
-C_BORDER      = colors.HexColor("#cbd5e1")
-C_ALT_ROW     = colors.HexColor("#f8fafc")
-C_SUMMARY_BG  = colors.HexColor("#e2e8f0")
-C_GREEN       = colors.HexColor("#15803d")
-C_RED         = colors.HexColor("#b91c1c")
-C_MUTED       = colors.HexColor("#94a3b8")
-C_TITLE       = colors.HexColor("#0f172a")
-C_SUBTITLE    = colors.HexColor("#475569")
+C_BORDER = colors.HexColor("#cbd5e1")
+C_ALT_ROW = colors.HexColor("#f8fafc")
+C_SUMMARY_BG = colors.HexColor("#e2e8f0")
+C_GREEN = colors.HexColor("#15803d")
+C_RED = colors.HexColor("#b91c1c")
+C_MUTED = colors.HexColor("#94a3b8")
+C_TITLE = colors.HexColor("#0f172a")
+C_SUBTITLE = colors.HexColor("#475569")
 
 
 def _nota(score: int, total: int) -> str:
@@ -44,21 +44,42 @@ def _build_section(
     questions_count: int,
     rows_data: list[dict[str, Any]],
 ) -> list:
-    TH = ParagraphStyle("TH", fontSize=8, fontName="Helvetica-Bold",
-                        alignment=TA_CENTER, leading=10, textColor=C_HEADER_TEXT)
-    TH_L = ParagraphStyle("THL", fontSize=8, fontName="Helvetica-Bold",
-                          alignment=TA_LEFT, leading=10, textColor=C_HEADER_TEXT)
+    TH = ParagraphStyle(
+        "TH",
+        fontSize=8,
+        fontName="Helvetica-Bold",
+        alignment=TA_CENTER,
+        leading=10,
+        textColor=C_HEADER_TEXT,
+    )
+    TH_L = ParagraphStyle(
+        "THL",
+        fontSize=8,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
+        leading=10,
+        textColor=C_HEADER_TEXT,
+    )
     TD_C = ParagraphStyle("TDC", fontSize=8, alignment=TA_CENTER, leading=10)
     TD = ParagraphStyle("TD", fontSize=8, alignment=TA_LEFT, leading=10)
-    TD_MUTED = ParagraphStyle("TDM", fontSize=8, alignment=TA_LEFT,
-                              leading=10, textColor=C_MUTED, fontName="Helvetica-Oblique")
-    S_TITLE = ParagraphStyle("ST", fontSize=12, fontName="Helvetica-Bold",
-                             textColor=C_TITLE, spaceAfter=1)
+    TD_MUTED = ParagraphStyle(
+        "TDM",
+        fontSize=8,
+        alignment=TA_LEFT,
+        leading=10,
+        textColor=C_MUTED,
+        fontName="Helvetica-Oblique",
+    )
+    S_TITLE = ParagraphStyle(
+        "ST", fontSize=12, fontName="Helvetica-Bold", textColor=C_TITLE, spaceAfter=1
+    )
     S_SUB = ParagraphStyle("SS", fontSize=8, textColor=C_SUBTITLE, spaceAfter=4)
-    S_AVG = ParagraphStyle("SA", fontSize=8, fontName="Helvetica-Bold",
-                           alignment=TA_LEFT, leading=10)
-    S_AVG_C = ParagraphStyle("SAC", fontSize=8, fontName="Helvetica-Bold",
-                             alignment=TA_CENTER, leading=10)
+    S_AVG = ParagraphStyle(
+        "SA", fontSize=8, fontName="Helvetica-Bold", alignment=TA_LEFT, leading=10
+    )
+    S_AVG_C = ParagraphStyle(
+        "SAC", fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER, leading=10
+    )
 
     story = [
         Paragraph(f"{exam_title}  –  {class_name}", S_TITLE),
@@ -94,8 +115,14 @@ def _build_section(
             nota = _nota(r["score"], r["total_questions"])
             pct = r["score"] / max(r["total_questions"], 1)
             score_color = C_GREEN if pct >= 0.5 else C_RED
-            TD_SCORE = ParagraphStyle(f"TDS{i}", fontSize=8, fontName="Helvetica-Bold",
-                                      alignment=TA_CENTER, leading=10, textColor=score_color)
+            TD_SCORE = ParagraphStyle(
+                f"TDS{i}",
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+                leading=10,
+                textColor=score_color,
+            )
             acertos_cell = Paragraph(str(r["score"]), TD_SCORE)
             nota_cell = Paragraph(nota, TD_SCORE)
         else:
@@ -103,12 +130,14 @@ def _build_section(
             nota_cell = Paragraph("—", TD_C)
 
         name_style = TD if r["identified"] else TD_MUTED
-        table_rows.append([
-            Paragraph(num, TD_C),
-            Paragraph(name, name_style),
-            acertos_cell,
-            nota_cell,
-        ])
+        table_rows.append(
+            [
+                Paragraph(num, TD_C),
+                Paragraph(name, name_style),
+                acertos_cell,
+                nota_cell,
+            ]
+        )
         row_bgs.append(colors.white if i % 2 == 0 else C_ALT_ROW)
 
     n_scored = len(scored)
@@ -123,12 +152,14 @@ def _build_section(
         avg_label = f"Nenhum resultado registrado  ({n_total} aluno{'s' if n_total != 1 else ''})"
         avg_acertos = "—"
 
-    table_rows.append([
-        Paragraph("", TD_C),
-        Paragraph(avg_label, S_AVG),
-        Paragraph(avg_acertos, S_AVG_C),
-        Paragraph(avg_nota, S_AVG_C),
-    ])
+    table_rows.append(
+        [
+            Paragraph("", TD_C),
+            Paragraph(avg_label, S_AVG),
+            Paragraph(avg_acertos, S_AVG_C),
+            Paragraph(avg_nota, S_AVG_C),
+        ]
+    )
 
     col_w = [12 * mm, None, 20 * mm, 18 * mm]
     table = Table(table_rows, colWidths=col_w, repeatRows=1)
@@ -155,40 +186,43 @@ def _build_section(
 
 
 def _build_rows_for_class(exam: Exam, cg) -> list[dict]:
-    students = list(
-        Student.active.filter(class_group=cg, is_active=True).order_by("name")
-    )
+    students = list(Student.active.filter(class_group=cg, is_active=True).order_by("name"))
 
     results_by_student = {
         r.student_id: r
-        for r in ScanResult.active.filter(exam=exam, student__class_group=cg).select_related("student")
+        for r in ScanResult.active.filter(exam=exam, student__class_group=cg).select_related(
+            "student"
+        )
     }
 
     unidentified = list(
-        ScanResult.active.filter(exam=exam, student__isnull=True)
-        .order_by("student_number")
+        ScanResult.active.filter(exam=exam, student__isnull=True).order_by("student_number")
     )
 
     rows: list[dict] = []
 
     for student in students:
         result = results_by_student.get(student.id)
-        rows.append({
-            "number": student.number,
-            "name": student.name,
-            "identified": True,
-            "score": result.score if result else None,
-            "total_questions": result.total_questions if result else exam.questions_count,
-        })
+        rows.append(
+            {
+                "number": student.number,
+                "name": student.name,
+                "identified": True,
+                "score": result.score if result else None,
+                "total_questions": result.total_questions if result else exam.questions_count,
+            }
+        )
 
     for r in unidentified:
-        rows.append({
-            "number": r.student_number,
-            "name": "Não identificado",
-            "identified": False,
-            "score": r.score,
-            "total_questions": r.total_questions,
-        })
+        rows.append(
+            {
+                "number": r.student_number,
+                "name": "Não identificado",
+                "identified": False,
+                "score": r.score,
+                "total_questions": r.total_questions,
+            }
+        )
 
     return rows
 
@@ -212,18 +246,17 @@ def generate_class_report(exams: list[Exam]) -> bytes:
 
         for cg in class_groups:
             rows = _build_rows_for_class(exam, cg)
-            sections.append({
-                "exam_title": exam.title,
-                "class_name": cg.name,
-                "questions_count": exam.questions_count,
-                "rows": rows,
-            })
+            sections.append(
+                {
+                    "exam_title": exam.title,
+                    "class_name": cg.name,
+                    "questions_count": exam.questions_count,
+                    "rows": rows,
+                }
+            )
 
         if not class_groups:
-            results_qs = (
-                ScanResult.active.filter(exam=exam)
-                .select_related("student")
-            )
+            results_qs = ScanResult.active.filter(exam=exam).select_related("student")
             rows = [
                 {
                     "number": r.student_number,
@@ -235,20 +268,24 @@ def generate_class_report(exams: list[Exam]) -> bytes:
                 for r in results_qs
             ]
             rows.sort(key=lambda r: r["name"].lower())
-            sections.append({
-                "exam_title": exam.title,
-                "class_name": "Sem turma",
-                "questions_count": exam.questions_count,
-                "rows": rows,
-            })
+            sections.append(
+                {
+                    "exam_title": exam.title,
+                    "class_name": "Sem turma",
+                    "questions_count": exam.questions_count,
+                    "rows": rows,
+                }
+            )
 
     for i, sec in enumerate(sections):
-        story.extend(_build_section(
-            sec["exam_title"],
-            sec["class_name"],
-            sec["questions_count"],
-            sec["rows"],
-        ))
+        story.extend(
+            _build_section(
+                sec["exam_title"],
+                sec["class_name"],
+                sec["questions_count"],
+                sec["rows"],
+            )
+        )
         if i < len(sections) - 1:
             story.append(PageBreak())
 

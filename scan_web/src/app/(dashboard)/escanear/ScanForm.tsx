@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useActionState, useRef, useState } from 'react'
 import { scanExam } from '@/app/actions/escanear'
 import type { Exam, ScanResult } from '@/lib/definitions'
@@ -192,7 +193,14 @@ export default function ScanForm({ exams }: { exams: Exam[] }) {
             className="relative cursor-pointer rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-400 transition bg-slate-50 hover:bg-indigo-50/30 flex flex-col items-center justify-center min-h-40 overflow-hidden"
           >
             {preview ? (
-              <img src={preview} alt="preview" className="max-h-56 object-contain p-2" />
+              <Image
+                src={preview}
+                alt="Preview"
+                width={640}
+                height={360}
+                unoptimized
+                className="max-h-56 w-auto object-contain p-2"
+              />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
                 <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -29,13 +29,13 @@ def validate_email_domain_exists(email):
             raise ValidationError(_("O domínio do email não possui servidor de email válido."))
 
     except dns.resolver.NXDOMAIN:
-        raise ValidationError(_("O domínio do email não existe."))
+        raise ValidationError(_("O domínio do email não existe.")) from None
     except dns.resolver.NoAnswer:
-        raise ValidationError(_("O domínio do email não possui registro MX."))
+        raise ValidationError(_("O domínio do email não possui registro MX.")) from None
     except dns.resolver.NoNameservers:
-        raise ValidationError(_("Não foi possível validar o domínio do email."))
+        raise ValidationError(_("Não foi possível validar o domínio do email.")) from None
     except dns.exception.Timeout:
-        raise ValidationError(_("Tempo esgotado ao validar o domínio do email."))
+        raise ValidationError(_("Tempo esgotado ao validar o domínio do email.")) from None
 
 
 class StrongPasswordValidator:

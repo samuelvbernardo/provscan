@@ -2,7 +2,6 @@ import os
 import tempfile
 
 from django.contrib import admin
-from django.core.files.base import ContentFile
 from django.utils.translation import gettext_lazy as _
 
 from core.models import Student
@@ -17,6 +16,7 @@ class ExamAdmin(admin.ModelAdmin):
 
     def get_class_groups(self, obj):
         return ", ".join(obj.class_groups.values_list("name", flat=True).order_by("name")) or "—"
+
     get_class_groups.short_description = "Turmas"
 
     def save_model(self, request, obj, form, change):
@@ -66,26 +66,32 @@ class ExamAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        (_("Informações da prova"), {
-            "fields": (
-                "title",
-                "description",
-                "class_groups",
-                "questions_count",
-                "options_count",
-                "answer_key",
-                "template_file",
-                "is_active",
-            )
-        }),
-        (_("Controle"), {
-            "fields": (
-                "created_at",
-                "updated_at",
-                "is_deleted",
-                "deleted_at",
-            )
-        }),
+        (
+            _("Informações da prova"),
+            {
+                "fields": (
+                    "title",
+                    "description",
+                    "class_groups",
+                    "questions_count",
+                    "options_count",
+                    "answer_key",
+                    "template_file",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            _("Controle"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                    "is_deleted",
+                    "deleted_at",
+                )
+            },
+        ),
     )
 
 
@@ -126,29 +132,38 @@ class ScanResultAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        (_("Envio para leitura"), {
-            "fields": (
-                "exam",
-                "image",
-            )
-        }),
-        (_("Resultado da leitura"), {
-            "fields": (
-                "student",
-                "student_number",
-                "answers",
-                "score",
-                "total_questions",
-            )
-        }),
-        (_("Controle"), {
-            "fields": (
-                "created_at",
-                "updated_at",
-                "is_deleted",
-                "deleted_at",
-            )
-        }),
+        (
+            _("Envio para leitura"),
+            {
+                "fields": (
+                    "exam",
+                    "image",
+                )
+            },
+        ),
+        (
+            _("Resultado da leitura"),
+            {
+                "fields": (
+                    "student",
+                    "student_number",
+                    "answers",
+                    "score",
+                    "total_questions",
+                )
+            },
+        ),
+        (
+            _("Controle"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                    "is_deleted",
+                    "deleted_at",
+                )
+            },
+        ),
     )
 
     def save_model(self, request, obj, form, change):

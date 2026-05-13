@@ -1,5 +1,5 @@
-from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers
 
 from core.models import ClassGroup, Student
 
@@ -61,9 +61,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
     def validate_number(self, value):
         if value < 0 or value > 99:
-            raise serializers.ValidationError(
-                "O número do aluno deve estar entre 0 e 99."
-            )
+            raise serializers.ValidationError("O número do aluno deve estar entre 0 e 99.")
 
         return value
 
@@ -85,8 +83,8 @@ class StudentSerializer(serializers.ModelSerializer):
             exists = exists.exclude(id=self.instance.id)
 
         if exists.exists():
-            raise serializers.ValidationError({
-                "number": "Já existe um aluno com esse número nessa turma."
-            })
+            raise serializers.ValidationError(
+                {"number": "Já existe um aluno com esse número nessa turma."}
+            )
 
         return attrs

@@ -1,6 +1,5 @@
 import cv2
 
-
 # Limites calibrados para cartões A4 impressos em 72–150 DPI, redimensionados
 # para o espaço normalizado de 600×800 px usado pelo pipeline.
 #

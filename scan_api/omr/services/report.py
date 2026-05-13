@@ -2,18 +2,18 @@ import io
 from typing import Any
 
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
-    Paragraph,
-    Spacer,
-    HRFlowable,
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 from omr.models import ScanResult
 
@@ -156,7 +156,11 @@ def generate_report_card(scan_result: ScanResult) -> bytes:
         if ans is not None and i < len(answer_key) and ans != answer_key[i]
     )
     blank_count = sum(1 for ans in answers if ans is None)
-    pct = round((correct_count / scan_result.total_questions) * 100, 1) if scan_result.total_questions else 0
+    pct = (
+        round((correct_count / scan_result.total_questions) * 100, 1)
+        if scan_result.total_questions
+        else 0
+    )
 
     summary_data = [
         [
@@ -179,15 +183,17 @@ def generate_report_card(scan_result: ScanResult) -> bytes:
 
     summary_table = Table(summary_data, colWidths="*")
     summary_table.setStyle(
-        TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), COLOR_HEADER),
-            ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-            ("ROUNDEDCORNERS", [4]),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ])
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), COLOR_HEADER),
+                ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+                ("ROUNDEDCORNERS", [4]),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
     )
     story.append(summary_table)
     story.append(Spacer(1, 5 * mm))
@@ -196,16 +202,75 @@ def generate_report_card(scan_result: ScanResult) -> bytes:
     story.append(Paragraph("Desempenho por questão", section_style))
 
     header = [
-        Paragraph("Nº", ParagraphStyle("TH", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
-        Paragraph("Gabarito", ParagraphStyle("TH", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
-        Paragraph("Marcado", ParagraphStyle("TH", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
-        Paragraph("Resultado", ParagraphStyle("TH", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
-        Paragraph("IC da turma", ParagraphStyle("TH", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Bold", alignment=TA_CENTER)),
+        Paragraph(
+            "Nº",
+            ParagraphStyle(
+                "TH",
+                parent=styles["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+            ),
+        ),
+        Paragraph(
+            "Gabarito",
+            ParagraphStyle(
+                "TH",
+                parent=styles["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+            ),
+        ),
+        Paragraph(
+            "Marcado",
+            ParagraphStyle(
+                "TH",
+                parent=styles["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+            ),
+        ),
+        Paragraph(
+            "Resultado",
+            ParagraphStyle(
+                "TH",
+                parent=styles["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+            ),
+        ),
+        Paragraph(
+            "IC da turma",
+            ParagraphStyle(
+                "TH",
+                parent=styles["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                alignment=TA_CENTER,
+            ),
+        ),
     ]
 
     cell_style = ParagraphStyle("Cell", parent=styles["Normal"], fontSize=8, alignment=TA_CENTER)
-    correct_cell_style = ParagraphStyle("CellCorrect", parent=styles["Normal"], fontSize=8, alignment=TA_CENTER, textColor=COLOR_GREEN_DARK, fontName="Helvetica-Bold")
-    incorrect_cell_style = ParagraphStyle("CellWrong", parent=styles["Normal"], fontSize=8, alignment=TA_CENTER, textColor=COLOR_RED_DARK, fontName="Helvetica-Bold")
+    correct_cell_style = ParagraphStyle(
+        "CellCorrect",
+        parent=styles["Normal"],
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=COLOR_GREEN_DARK,
+        fontName="Helvetica-Bold",
+    )
+    incorrect_cell_style = ParagraphStyle(
+        "CellWrong",
+        parent=styles["Normal"],
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=COLOR_RED_DARK,
+        fontName="Helvetica-Bold",
+    )
 
     table_data = [header]
     row_colors = []
@@ -233,13 +298,15 @@ def generate_report_card(scan_result: ScanResult) -> bytes:
             row_bg = COLOR_RED
 
         row_colors.append(row_bg)
-        table_data.append([
-            Paragraph(str(i + 1), cell_style),
-            Paragraph(correct_answer, cell_style),
-            marked_para,
-            result_para,
-            Paragraph(f"{ci}%", cell_style),
-        ])
+        table_data.append(
+            [
+                Paragraph(str(i + 1), cell_style),
+                Paragraph(correct_answer, cell_style),
+                marked_para,
+                result_para,
+                Paragraph(f"{ci}%", cell_style),
+            ]
+        )
 
     col_widths = [12 * mm, 22 * mm, 22 * mm, 30 * mm, 30 * mm]
     q_table = Table(table_data, colWidths=col_widths, repeatRows=1)

@@ -1,6 +1,5 @@
 from math import ceil
 
-
 PAGE_WIDTH_MM = 210
 PAGE_HEIGHT_MM = 297
 
@@ -50,15 +49,11 @@ def question_position_mm(question_index, questions_count, options_count):
 
 def question_option_x_mm(question_base_x_mm, option_index):
     return (
-        question_base_x_mm
-        + QUESTION_OPTION_START_OFFSET_MM
-        + option_index * QUESTION_OPTION_GAP_MM
+        question_base_x_mm + QUESTION_OPTION_START_OFFSET_MM + option_index * QUESTION_OPTION_GAP_MM
     )
 
 
 def question_letter_x_mm(question_base_x_mm, option_index):
     return (
-        question_base_x_mm
-        + QUESTION_LETTER_START_OFFSET_MM
-        + option_index * QUESTION_OPTION_GAP_MM
+        question_base_x_mm + QUESTION_LETTER_START_OFFSET_MM + option_index * QUESTION_OPTION_GAP_MM
     )

@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('omr', '0004_exam_class_groups'),
+        ("omr", "0004_exam_class_groups"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='exam',
-            name='options_count',
-            field=models.PositiveIntegerField(default=4, help_text='Quantidade de alternativas por questão. Mínimo 4 e máximo 5.', verbose_name='Quantidade de alternativas'),
+            model_name="exam",
+            name="options_count",
+            field=models.PositiveIntegerField(
+                default=4,
+                help_text="Quantidade de alternativas por questão. Mínimo 4 e máximo 5.",
+                verbose_name="Quantidade de alternativas",
+            ),
         ),
     ]

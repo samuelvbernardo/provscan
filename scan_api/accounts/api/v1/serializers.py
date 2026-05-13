@@ -4,7 +4,6 @@ from rest_framework import serializers
 
 from accounts.validators import validate_email_domain_exists
 
-
 User = get_user_model()
 
 
@@ -52,9 +51,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         validate_email_domain_exists(value)
 
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Já existe um usuário cadastrado com este email."
-            )
+            raise serializers.ValidationError("Já existe um usuário cadastrado com este email.")
 
         return value
 
@@ -63,9 +60,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         password_confirm = attrs.pop("password_confirm", None)
 
         if password != password_confirm:
-            raise serializers.ValidationError({
-                "password_confirm": "As senhas não conferem."
-            })
+            raise serializers.ValidationError({"password_confirm": "As senhas não conferem."})
 
         validate_password(password)
 

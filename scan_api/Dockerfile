@@ -12,7 +12,7 @@ COPY requirements.txt .
 
 # Compila wheels para todas as dependências (evita recompilação no stage final)
 RUN pip install --upgrade pip \
-    && pip wheel --no-deps --wheel-dir /wheels -r requirements.txt
+    && pip wheel --wheel-dir /wheels -r requirements.txt
 
 
 # ============================================================
@@ -39,8 +39,9 @@ RUN groupadd --gid 1001 appgroup \
 WORKDIR /app
 
 # Instala wheels do stage anterior (sem reconstruir)
+COPY requirements.txt .
 COPY --from=builder /wheels /wheels
-RUN pip install --no-index --find-links=/wheels /wheels/*.whl \
+RUN pip install --no-index --find-links=/wheels -r requirements.txt \
     && rm -rf /wheels
 
 # Copia código-fonte (após instalar deps para melhor uso do cache do Docker)

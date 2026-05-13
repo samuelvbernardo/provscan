@@ -29,5 +29,5 @@ def load_image_for_omr(path):
     except (UnidentifiedImageError, OSError, ValueError):
         image = cv2.imread(path)
         if image is None:
-            raise ValueError(f"Imagem nao encontrada ou formato nao suportado: {path}")
+            raise ValueError(f"Imagem nao encontrada ou formato nao suportado: {path}") from None
         return image
