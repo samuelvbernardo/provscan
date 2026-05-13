@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { logout } from '@/app/actions/auth'
 
 const navLinks = [
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/turmas', label: 'Turmas' },
   { href: '/provas', label: 'Provas' },
   { href: '/escanear', label: 'Escanear' },
