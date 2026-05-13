@@ -6,6 +6,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 from .layout import (
+    MARKER_SIZE_MM,
     QUESTION_ROW_GAP_MM,
     QUESTIONS_COLUMNS,
     QUESTIONS_START_X_MM,
@@ -14,7 +15,6 @@ from .layout import (
     READ_AREA_LEFT_MM,
     READ_AREA_RIGHT_MM,
     READ_AREA_TOP_MM,
-    MARKER_SIZE_MM,
     STUDENT_NUMBER_COLUMNS_X_MM,
     STUDENT_NUMBER_ROW_GAP_MM,
     STUDENT_NUMBER_START_X_MM,
@@ -62,13 +62,10 @@ def generate_exam_template(exam):
     markers = [
         # superior esquerdo
         (read_area_left, read_area_top - marker_size),
-
         # superior direito
         (read_area_right - marker_size, read_area_top - marker_size),
-
         # inferior esquerdo
         (read_area_left, read_area_bottom),
-
         # inferior direito
         (read_area_right - marker_size, read_area_bottom),
     ]
@@ -85,9 +82,7 @@ def generate_exam_template(exam):
     c.setFont("Helvetica", 10)
     c.drawString(25 * mm, page_height - 25 * mm, f"Prova: {exam.title}")
 
-    group_names = ", ".join(
-        exam.class_groups.values_list("name", flat=True).order_by("name")
-    )
+    group_names = ", ".join(exam.class_groups.values_list("name", flat=True).order_by("name"))
     if group_names:
         c.drawString(25 * mm, page_height - 31 * mm, f"Turma: {group_names}")
 

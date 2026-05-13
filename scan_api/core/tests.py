@@ -12,6 +12,7 @@ User = get_user_model()
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_user(email="prof@example.com", password="Test@1234"):
     return User.objects.create_user(email=email, password=password)
 
@@ -23,6 +24,7 @@ def make_class_group(name="Turma A", school_year="2024", owner=None):
 # ---------------------------------------------------------------------------
 # Model — ClassGroup
 # ---------------------------------------------------------------------------
+
 
 class ClassGroupModelTests(TestCase):
     def setUp(self):
@@ -50,7 +52,7 @@ class ClassGroupModelTests(TestCase):
         self.assertTrue(ClassGroup.active.filter(id=cg.id).exists())
 
     def test_active_manager_excludes_deleted(self):
-        cg1 = make_class_group(name="Ativa", owner=self.owner)
+        make_class_group(name="Ativa", owner=self.owner)
         cg2 = make_class_group(name="Deletada", owner=self.owner)
         cg2.delete()
         active = list(ClassGroup.active.values_list("name", flat=True))
@@ -61,6 +63,7 @@ class ClassGroupModelTests(TestCase):
 # ---------------------------------------------------------------------------
 # Model — Student
 # ---------------------------------------------------------------------------
+
 
 class StudentModelTests(TestCase):
     def setUp(self):
@@ -94,6 +97,7 @@ class StudentModelTests(TestCase):
 # ---------------------------------------------------------------------------
 # API — ClassGroup (com isolamento por owner)
 # ---------------------------------------------------------------------------
+
 
 class ClassGroupAPITests(APITestCase):
     URL = "/api/v1/class-groups/"
@@ -196,6 +200,7 @@ class ClassGroupAPITests(APITestCase):
 # ---------------------------------------------------------------------------
 # API — Student
 # ---------------------------------------------------------------------------
+
 
 class StudentAPITests(APITestCase):
     URL = "/api/v1/students/"

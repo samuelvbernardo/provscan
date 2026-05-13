@@ -10,6 +10,7 @@ from drf_spectacular.views import (
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from omr.views import serve_protected_media
+
 from .router.api import api_urls
 
 urlpatterns = [

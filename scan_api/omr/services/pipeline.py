@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from django.conf import settings
 
+from .align import align_sheet
+from .detect import find_bubbles
+from .image_io import load_image_for_omr
 from .layout import (
     PAGE_HEIGHT_MM,
     PAGE_WIDTH_MM,
@@ -12,10 +15,6 @@ from .layout import (
     question_position_mm,
 )
 from .preprocess import preprocess_image_from_array
-from .detect import find_bubbles
-from .align import align_sheet
-from .image_io import load_image_for_omr
-
 
 IMAGE_WIDTH = 600
 IMAGE_HEIGHT = 800
@@ -67,10 +66,7 @@ def score_bolha(image, thresh, x_centro, y_centro, raio=4, gray=None, hsv=None):
         saturacao = roi_hsv[:, :, 1]
         score_cor = cv2.mean(saturacao)[0] / 255.0
 
-    if roi_gray.size == 0:
-        score_escuro = 0
-    else:
-        score_escuro = max(0.0, 1.0 - (cv2.mean(roi_gray)[0] / 245.0))
+    score_escuro = 0 if roi_gray.size == 0 else max(0.0, 1.0 - (cv2.mean(roi_gray)[0] / 245.0))
 
     return max(score_thresh, score_cor, score_escuro)
 
@@ -294,7 +290,9 @@ def process_image(
     raw_image = load_image_for_omr(path)
 
     try:
-        image = align_sheet(raw_image, output_width=IMAGE_WIDTH, output_height=IMAGE_HEIGHT, debug=settings.DEBUG)
+        image = align_sheet(
+            raw_image, output_width=IMAGE_WIDTH, output_height=IMAGE_HEIGHT, debug=settings.DEBUG
+        )
         if settings.DEBUG:
             print("Alinhamento: OK (marcadores detectados)")
     except Exception as exc:
@@ -315,7 +313,7 @@ def process_image(
 
     filtered = []
 
-    for (x, y, w, h) in bubbles:
+    for x, y, w, h in bubbles:
         if x < 20 or y < 20 or x > w_img - 20 or y > h_img - 20:
             continue
 

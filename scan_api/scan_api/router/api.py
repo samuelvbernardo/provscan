@@ -4,5 +4,5 @@ from django.urls import path
 from scan_api.router.api_v1 import api_v1_urls
 
 api_urls = [
-    path('v1/', include((api_v1_urls, 'api_v1_urls'), namespace='v1.0')),
+    path("v1/", include((api_v1_urls, "api_v1_urls"), namespace="v1.0")),
 ]

@@ -5,11 +5,11 @@ import tempfile
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
-from drf_spectacular.utils import extend_schema
 
 from core.models import Student
 from omr.api.v1.serializers import (
@@ -23,7 +23,6 @@ from omr.services.pipeline import process_image
 from omr.services.report import generate_report_card
 from omr.services.template_generator import generate_exam_template
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,9 +30,7 @@ class ExamViewSet(viewsets.ModelViewSet):
     serializer_class = ExamSerializer
 
     def get_queryset(self):
-        return Exam.active.filter(owner=self.request.user).prefetch_related(
-            "class_groups"
-        )
+        return Exam.active.filter(owner=self.request.user).prefetch_related("class_groups")
 
     def perform_create(self, serializer):
         exam = serializer.save(owner=self.request.user)
@@ -120,8 +117,7 @@ class ScanResultViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return (
-            ScanResult.active
-            .filter(exam__owner=self.request.user)
+            ScanResult.active.filter(exam__owner=self.request.user)
             .select_related("exam", "student")
             .prefetch_related("exam__class_groups")
         )

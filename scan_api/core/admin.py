@@ -32,21 +32,27 @@ class ClassGroupAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        (_("Informações da turma"), {
-            "fields": (
-                "name",
-                "school_year",
-                "is_active",
-            )
-        }),
-        (_("Controle"), {
-            "fields": (
-                "created_at",
-                "updated_at",
-                "is_deleted",
-                "deleted_at",
-            )
-        }),
+        (
+            _("Informações da turma"),
+            {
+                "fields": (
+                    "name",
+                    "school_year",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            _("Controle"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                    "is_deleted",
+                    "deleted_at",
+                )
+            },
+        ),
     )
 
 
@@ -78,20 +84,26 @@ class StudentAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-        (_("Informações do aluno"), {
-            "fields": (
-                "class_group",
-                "number",
-                "name",
-                "is_active",
-            )
-        }),
-        (_("Controle"), {
-            "fields": (
-                "created_at",
-                "updated_at",
-                "is_deleted",
-                "deleted_at",
-            )
-        }),
+        (
+            _("Informações do aluno"),
+            {
+                "fields": (
+                    "class_group",
+                    "number",
+                    "name",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            _("Controle"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                    "is_deleted",
+                    "deleted_at",
+                )
+            },
+        ),
     )

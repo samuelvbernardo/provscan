@@ -78,6 +78,7 @@ class Exam(BaseModel):
     def options_labels(self):
         return [chr(65 + i) for i in range(self.options_count)]
 
+
 class ScanResult(BaseModel):
     class Meta(BaseModel.Meta):
         verbose_name = _("Resultado da leitura")

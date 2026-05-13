@@ -38,6 +38,7 @@ class StrongPasswordValidatorTests(TestCase):
 
     def _assert_invalid(self, password, code):
         from django.core.exceptions import ValidationError
+
         with self.assertRaises(ValidationError) as ctx:
             self.validator.validate(password)
         codes = [e.code for e in ctx.exception.error_list]
@@ -64,9 +65,7 @@ class StrongPasswordValidatorTests(TestCase):
 
 class TokenEndpointTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            email="user@example.com", password="Test@1234"
-        )
+        self.user = User.objects.create_user(email="user@example.com", password="Test@1234")
 
     def test_login_returns_tokens(self):
         res = self.client.post(

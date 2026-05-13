@@ -97,16 +97,17 @@ def find_markers(image, debug=False):
         is_filled = extent > 0.45
         has_corners = 4 <= len(approx) <= 6
         valid_size = (
-            min_marker_side <= w <= max_marker_side
-            and min_marker_side <= h <= max_marker_side
+            min_marker_side <= w <= max_marker_side and min_marker_side <= h <= max_marker_side
         )
 
         if is_square_like and is_filled and has_corners and valid_size:
-            markers.append({
-                "center": (x + w / 2, y + h / 2),
-                "box": (x, y, w, h),
-                "area": area,
-            })
+            markers.append(
+                {
+                    "center": (x + w / 2, y + h / 2),
+                    "box": (x, y, w, h),
+                    "area": area,
+                }
+            )
 
     return markers
 
@@ -121,16 +122,18 @@ def scale_markers(markers, scale):
     for marker in markers:
         cx, cy = marker["center"]
         x, y, w, h = marker["box"]
-        scaled.append({
-            "center": (cx * inv, cy * inv),
-            "box": (
-                int(round(x * inv)),
-                int(round(y * inv)),
-                int(round(w * inv)),
-                int(round(h * inv)),
-            ),
-            "area": marker["area"] * inv * inv,
-        })
+        scaled.append(
+            {
+                "center": (cx * inv, cy * inv),
+                "box": (
+                    int(round(x * inv)),
+                    int(round(y * inv)),
+                    int(round(w * inv)),
+                    int(round(h * inv)),
+                ),
+                "area": marker["area"] * inv * inv,
+            }
+        )
 
     return scaled
 
