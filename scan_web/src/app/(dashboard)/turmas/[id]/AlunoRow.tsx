@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { updateStudent, deleteStudent } from '@/app/actions/alunos'
-import type { Student } from '@/lib/definitions'
+import type { FormState, Student } from '@/lib/definitions'
 
 const INPUT =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
@@ -15,11 +15,16 @@ export default function AlunoRow({
   classGroupId: number
 }) {
   const [editing, setEditing] = useState(false)
-  const [state, action, pending] = useActionState(updateStudent, undefined)
-
-  useEffect(() => {
-    if (state?.ok) setEditing(false)
-  }, [state])
+  const [state, action, pending] = useActionState(
+    async (prevState: FormState, formData: FormData): Promise<FormState> => {
+      const nextState = await updateStudent(prevState, formData)
+      if (nextState?.ok) {
+        setEditing(false)
+      }
+      return nextState
+    },
+    undefined
+  )
 
   if (editing) {
     return (

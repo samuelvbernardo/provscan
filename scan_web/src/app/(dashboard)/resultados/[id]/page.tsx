@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
@@ -185,10 +186,13 @@ export default async function ResultadoDetailPage({
       {result.image && (
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Imagem do cartão-resposta</h2>
-          <img
+          <Image
             src={result.image}
             alt="Cartão-resposta"
-            className="w-full rounded-lg object-contain max-h-96 border border-slate-100"
+            width={1200}
+            height={1600}
+            unoptimized
+            className="h-auto max-h-96 w-full rounded-lg border border-slate-100 object-contain"
           />
         </div>
       )}
