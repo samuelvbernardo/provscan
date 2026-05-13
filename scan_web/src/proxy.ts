@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_ROUTES = ['/login']
-// Middleware roda no servidor — usa API_URL privada, não NEXT_PUBLIC_
-const API_URL = process.env.API_URL ?? 'http://localhost:8000'
+const API_URL = (process.env.API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+
+function isJwtExpired(token: string, skewSeconds = 30) {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return true
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const decoded = JSON.parse(atob(padded)) as { exp?: number }
+    if (typeof decoded.exp !== 'number') return true
+
+    return decoded.exp <= Math.floor(Date.now() / 1000) + skewSeconds
+  } catch {
+    return true
+  }
+}
 
 async function tryRefresh(refreshToken: string): Promise<string | null> {
   try {
@@ -19,26 +34,37 @@ async function tryRefresh(refreshToken: string): Promise<string | null> {
   }
 }
 
+function redirectToLogin(request: NextRequest) {
+  const response = NextResponse.redirect(new URL('/login?expired=1', request.url))
+  response.cookies.delete('access_token')
+  response.cookies.delete('refresh_token')
+  return response
+}
+
+function continueWithoutSession() {
+  const response = NextResponse.next()
+  response.cookies.delete('access_token')
+  response.cookies.delete('refresh_token')
+  return response
+}
+
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route))
+  const forceLogin = isPublicRoute && searchParams.get('expired') === '1'
   const accessToken = request.cookies.get('access_token')?.value
   const refreshToken = request.cookies.get('refresh_token')?.value
+  const hasValidAccessToken = Boolean(accessToken && !isJwtExpired(accessToken))
 
-  // Sem nenhum token — acesso negado a rotas privadas
-  if (!accessToken && !refreshToken) {
-    if (isPublicRoute) return NextResponse.next()
-    return NextResponse.redirect(new URL('/login', request.url))
+  if (forceLogin) {
+    return continueWithoutSession()
   }
 
-  // Access token expirou, mas refresh token ainda existe — tenta renovar
-  if (!accessToken && refreshToken) {
+  if (!hasValidAccessToken && refreshToken) {
     const newAccessToken = await tryRefresh(refreshToken)
 
     if (!newAccessToken) {
-      const response = NextResponse.redirect(new URL('/login', request.url))
-      response.cookies.delete('refresh_token')
-      return response
+      return isPublicRoute ? continueWithoutSession() : redirectToLogin(request)
     }
 
     const destination = isPublicRoute ? new URL('/dashboard', request.url) : null
@@ -56,8 +82,12 @@ export async function proxy(request: NextRequest) {
     return response
   }
 
-  // Já autenticado tentando acessar rota pública
-  if (accessToken && isPublicRoute) {
+  if (!hasValidAccessToken && !refreshToken) {
+    if (isPublicRoute) return NextResponse.next()
+    return redirectToLogin(request)
+  }
+
+  if (hasValidAccessToken && isPublicRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
